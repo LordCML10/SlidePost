@@ -45,13 +45,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://slide-post.vercel.app'
+
   try {
     const urls = await Promise.all(
-      files.map((file) =>
-        file.arrayBuffer().then((buf) =>
-          uploadImageToBlob(file.name || `image-${Date.now()}`, buf, file.type)
-        )
-      )
+      files.map(async (file) => {
+        const buf = await file.arrayBuffer()
+        const blobUrl = await uploadImageToBlob(file.name || `image-${Date.now()}`, buf, file.type)
+        // Return proxy URL so TikTok pulls from our verified domain
+        return `${appUrl}/api/image?src=${encodeURIComponent(blobUrl)}`
+      })
     )
     return NextResponse.json({ data: { urls } })
   } catch (err) {
