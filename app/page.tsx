@@ -106,21 +106,37 @@ export default function Home() {
     setPosting(true)
     setStatus(null)
 
-    const formData = new FormData()
-    formData.append('caption', caption)
-    hashtags.forEach((h) => formData.append('hashtags', h))
-    images.forEach((img) => formData.append('images', img.file))
-
     try {
-      const res = await fetch('/api/post', { method: 'POST', body: formData })
-      const data = await res.json()
+      // Step 1: Upload images to Vercel Blob, get public URLs
+      const uploadForm = new FormData()
+      images.forEach((img) => uploadForm.append('images', img.file))
 
-      if (!res.ok) {
-        setStatus({ type: 'error', message: data.error ?? 'Something went wrong' })
+      const uploadRes = await fetch('/api/upload', { method: 'POST', body: uploadForm })
+      const uploadData = await uploadRes.json()
+
+      if (!uploadRes.ok) {
+        setStatus({ type: 'error', message: uploadData.error ?? 'Upload failed' })
+        return
+      }
+
+      // Step 2: Send public URLs to TikTok
+      const postRes = await fetch('/api/post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrls: uploadData.data.urls,
+          caption,
+          hashtags,
+        }),
+      })
+      const postData = await postRes.json()
+
+      if (!postRes.ok) {
+        setStatus({ type: 'error', message: postData.error ?? 'Posting failed' })
       } else {
         setStatus({
           type: 'success',
-          message: `Draft sent to TikTok inbox ✓  (ID: ${data.data.publish_id})`,
+          message: `Draft sent to TikTok inbox ✓  (ID: ${postData.data.publish_id})`,
         })
         clearForm()
       }

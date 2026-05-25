@@ -1,5 +1,5 @@
 const TIKTOK_TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/'
-const TIKTOK_PHOTO_INIT_URL = 'https://open.tiktokapis.com/v2/post/publish/content/init/'
+const TIKTOK_POST_URL = 'https://open.tiktokapis.com/v2/post/publish/content/init/'
 
 export async function exchangeCodeForToken(code: string): Promise<{
   access_token: string
@@ -29,17 +29,16 @@ export async function exchangeCodeForToken(code: string): Promise<{
   return data
 }
 
-// Step 1: Init the upload — TikTok returns a publish_id and upload_url
-export async function initPhotoUpload({
+export async function postPhotoSlideshow({
   accessToken,
+  imageUrls,
   description,
-  photoCount,
 }: {
   accessToken: string
+  imageUrls: string[]
   description: string
-  photoCount: number
-}): Promise<{ publish_id: string; upload_url: string }> {
-  const res = await fetch(TIKTOK_PHOTO_INIT_URL, {
+}) {
+  const res = await fetch(TIKTOK_POST_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -54,9 +53,9 @@ export async function initPhotoUpload({
         disable_stitch: false,
       },
       source_info: {
-        source: 'FILE_UPLOAD',
+        source: 'PULL_FROM_URL',
         photo_cover_index: 0,
-        photo_count: photoCount,
+        photo_images: imageUrls,
       },
       post_mode: 'MEDIA_UPLOAD',
       media_type: 'PHOTO',
@@ -64,7 +63,7 @@ export async function initPhotoUpload({
   })
 
   const text = await res.text()
-  console.log('[TikTok init] status:', res.status, 'body:', text)
+  console.log('[TikTok post] status:', res.status, 'body:', text)
 
   let data: Record<string, unknown>
   try {
@@ -74,33 +73,8 @@ export async function initPhotoUpload({
   }
 
   if (!res.ok || (data.error as Record<string, unknown>)?.code !== 'ok') {
-    throw new Error(`TikTok init error: ${JSON.stringify(data.error ?? data)}`)
+    throw new Error(`TikTok error: ${JSON.stringify(data.error ?? data)}`)
   }
 
-  const d = data.data as Record<string, unknown>
-  return {
-    publish_id: d.publish_id as string,
-    upload_url: d.upload_url as string,
-  }
-}
-
-// Step 2: Upload one photo's raw bytes to the upload_url TikTok returned
-export async function uploadPhoto(
-  uploadUrl: string,
-  buffer: ArrayBuffer,
-  mimeType: string
-): Promise<void> {
-  const res = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': mimeType,
-      'Content-Length': String(buffer.byteLength),
-    },
-    body: buffer,
-  })
-
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`Photo upload failed (${res.status}): ${text}`)
-  }
+  return data.data as { publish_id: string }
 }
