@@ -73,7 +73,8 @@ export async function POST(req: NextRequest) {
     // TikTok finalizes automatically after all images are uploaded
     return NextResponse.json({ data: { publish_id } })
   } catch (err) {
-    console.error('[/api/post] Error:', err)
-    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('[/api/post] Error:', message)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
