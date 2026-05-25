@@ -8,6 +8,7 @@ export async function uploadImageToBlob(
   const { url } = await put(filename, file, {
     access: 'public',
     contentType: mimeType,
+    addRandomSuffix: true,
   })
   return url
 }
