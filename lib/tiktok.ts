@@ -1,5 +1,5 @@
 const TIKTOK_TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/'
-const TIKTOK_POST_URL = 'https://open.tiktokapis.com/v2/post/publish/content/init/'
+const TIKTOK_PHOTO_INIT_URL = 'https://open.tiktokapis.com/v2/post/publish/inbox/photo/init/'
 
 export async function exchangeCodeForToken(code: string): Promise<{
   access_token: string
@@ -29,16 +29,17 @@ export async function exchangeCodeForToken(code: string): Promise<{
   return data
 }
 
-export async function postPhotoSlideshow({
+// Step 1: Init the upload — TikTok returns a publish_id and upload_url
+export async function initPhotoUpload({
   accessToken,
-  imageUrls,
   description,
+  photoCount,
 }: {
   accessToken: string
-  imageUrls: string[]
   description: string
-}) {
-  const res = await fetch(TIKTOK_POST_URL, {
+  photoCount: number
+}): Promise<{ publish_id: string; upload_url: string }> {
+  const res = await fetch(TIKTOK_PHOTO_INIT_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -53,14 +54,43 @@ export async function postPhotoSlideshow({
         disable_stitch: false,
       },
       source_info: {
-        source: 'PULL_FROM_URL',
-        photo_cover_index: 0,
-        photo_images: imageUrls,
+        source: 'FILE_UPLOAD',
+        photo_count: photoCount,
       },
       post_mode: 'MEDIA_UPLOAD',
       media_type: 'PHOTO',
     }),
   })
 
-  return res.json()
+  const data = await res.json()
+
+  if (!res.ok || data.error) {
+    throw new Error(data.error?.message ?? 'Failed to initialize TikTok photo upload')
+  }
+
+  return {
+    publish_id: data.data.publish_id,
+    upload_url: data.data.upload_url,
+  }
+}
+
+// Step 2: Upload one photo's raw bytes to the upload_url TikTok returned
+export async function uploadPhoto(
+  uploadUrl: string,
+  buffer: ArrayBuffer,
+  mimeType: string
+): Promise<void> {
+  const res = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': mimeType,
+      'Content-Length': String(buffer.byteLength),
+    },
+    body: buffer,
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Photo upload failed (${res.status}): ${text}`)
+  }
 }
