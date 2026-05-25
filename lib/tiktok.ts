@@ -55,6 +55,7 @@ export async function initPhotoUpload({
       },
       source_info: {
         source: 'FILE_UPLOAD',
+        photo_cover_index: 0,
         photo_count: photoCount,
       },
       post_mode: 'MEDIA_UPLOAD',
