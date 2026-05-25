@@ -1,5 +1,5 @@
 const TIKTOK_TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/'
-const TIKTOK_PHOTO_INIT_URL = 'https://open.tiktokapis.com/v2/post/publish/inbox/photo/init/'
+const TIKTOK_PHOTO_INIT_URL = 'https://open.tiktokapis.com/v2/post/publish/content/init/'
 
 export async function exchangeCodeForToken(code: string): Promise<{
   access_token: string
@@ -62,15 +62,24 @@ export async function initPhotoUpload({
     }),
   })
 
-  const data = await res.json()
+  const text = await res.text()
+  console.log('[TikTok init] status:', res.status, 'body:', text)
 
-  if (!res.ok || data.error) {
-    throw new Error(data.error?.message ?? 'Failed to initialize TikTok photo upload')
+  let data: Record<string, unknown>
+  try {
+    data = JSON.parse(text)
+  } catch {
+    throw new Error(`TikTok returned non-JSON (${res.status}): ${text.slice(0, 200)}`)
   }
 
+  if (!res.ok || (data.error as Record<string, unknown>)?.code !== 'ok') {
+    throw new Error(`TikTok init error: ${JSON.stringify(data.error ?? data)}`)
+  }
+
+  const d = data.data as Record<string, unknown>
   return {
-    publish_id: data.data.publish_id,
-    upload_url: data.data.upload_url,
+    publish_id: d.publish_id as string,
+    upload_url: d.upload_url as string,
   }
 }
 
