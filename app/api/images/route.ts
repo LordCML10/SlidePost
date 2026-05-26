@@ -15,13 +15,17 @@ function withProxyUrl(image: Record<string, unknown>) {
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const tagId = searchParams.get('tag_id')
+  const ids = searchParams.get('ids') // comma-separated UUIDs
 
   let query = supabaseAdmin
     .from('images')
     .select('*')
     .order('created_at', { ascending: false })
 
-  if (tagId === 'null') {
+  if (ids) {
+    // Fetch specific images by ID (used by builder to load selected images)
+    query = query.in('id', ids.split(',').filter(Boolean))
+  } else if (tagId === 'null') {
     query = query.is('tag_id', null)
   } else if (tagId) {
     query = query.eq('tag_id', tagId)

@@ -5,17 +5,11 @@ export const dynamic = 'force-dynamic'
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024 // 5MB
-const MIN_PHOTOS = 2
-const MAX_PHOTOS = 10
+const MAX_PHOTOS = 10 // per batch — frontend batches larger imports
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://slide-post.vercel.app'
 
 export async function POST(req: NextRequest) {
-  const token = req.cookies.get('tt_access_token')?.value
-  if (!token) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-  }
-
   let formData: FormData
   try {
     formData = await req.formData()
@@ -25,9 +19,9 @@ export async function POST(req: NextRequest) {
 
   const files = formData.getAll('images') as File[]
 
-  if (files.length < MIN_PHOTOS || files.length > MAX_PHOTOS) {
+  if (files.length < 1 || files.length > MAX_PHOTOS) {
     return NextResponse.json(
-      { error: `Upload between ${MIN_PHOTOS} and ${MAX_PHOTOS} images` },
+      { error: `Upload between 1 and ${MAX_PHOTOS} images at a time` },
       { status: 400 }
     )
   }
