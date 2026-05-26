@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import type { Draft, HashtagSet, ImageWithProxy } from '@/lib/types'
+import type { Caption, Draft, HashtagSet, ImageWithProxy } from '@/lib/types'
 
 // ─── Builder content ─────────────────────────────────────────────────────────
 
@@ -26,14 +26,22 @@ function BuilderContent() {
   const [showSaveSet, setShowSaveSet] = useState(false)
   const [newSetName, setNewSetName] = useState('')
   const [savingSet, setSavingSet] = useState(false)
+  const [captions, setCaptions] = useState<Caption[]>([])
+  const [showSaveCaption, setShowSaveCaption] = useState(false)
+  const [newCaptionName, setNewCaptionName] = useState('')
+  const [savingCaption, setSavingCaption] = useState(false)
 
   const dragIndex = useRef<number | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const setsRes = await fetch('/api/hashtag-sets').then(r => r.json())
+      const [setsRes, captionsRes] = await Promise.all([
+        fetch('/api/hashtag-sets').then(r => r.json()),
+        fetch('/api/captions').then(r => r.json()),
+      ])
       setSets(setsRes.data ?? [])
+      setCaptions(captionsRes.data ?? [])
 
       if (draftParam) {
         // Edit mode — load existing draft
@@ -130,6 +138,28 @@ function BuilderContent() {
     }
   }
 
+  async function saveCaption() {
+    if (!newCaptionName.trim() || !caption.trim()) return
+    setSavingCaption(true)
+    try {
+      const res = await fetch('/api/captions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCaptionName.trim(), text: caption.trim() }),
+      })
+      const json = await res.json()
+      if (res.ok) {
+        setCaptions(prev => [...prev, json.data].sort((a, b) => a.name.localeCompare(b.name)))
+        setNewCaptionName('')
+        setShowSaveCaption(false)
+      } else {
+        setError(json.error)
+      }
+    } finally {
+      setSavingCaption(false)
+    }
+  }
+
   async function saveDraft() {
     if (images.length < 2) { setError('Select at least 2 images'); return }
     if (!caption.trim()) { setError('Caption is required'); return }
@@ -142,6 +172,10 @@ function BuilderContent() {
         caption: caption.trim(),
         hashtag_set_id: selectedSetId || null,
         custom_hashtags: selectedSetId ? null : hashtags,
+        // Always reset to unposted when saving — allows reuse of posted drafts
+        posted: false,
+        posted_at: null,
+        publish_id: null,
       }
 
       const res = existingDraftId
@@ -213,7 +247,26 @@ function BuilderContent() {
 
       {/* Caption */}
       <div className="mb-6">
-        <label className="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Caption</label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs text-gray-500 uppercase tracking-wider">Caption</label>
+          <div className="flex items-center gap-3">
+            {captions.length > 0 && (
+              <select
+                value=""
+                onChange={e => { if (e.target.value) setCaption(captions.find(c => c.id === e.target.value)?.text ?? caption) }}
+                className="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-violet-500"
+              >
+                <option value="">Load from library</option>
+                {captions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            )}
+            {caption.trim() && !showSaveCaption && (
+              <button onClick={() => setShowSaveCaption(true)} className="text-xs text-violet-400 hover:text-violet-300">
+                Save to library
+              </button>
+            )}
+          </div>
+        </div>
         <textarea
           value={caption}
           onChange={e => setCaption(e.target.value)}
@@ -221,6 +274,23 @@ function BuilderContent() {
           rows={4}
           className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 resize-none focus:outline-none focus:border-violet-500 transition-colors"
         />
+        {showSaveCaption && (
+          <div className="flex items-center gap-2 mt-2">
+            <input
+              autoFocus
+              type="text"
+              placeholder="Caption name"
+              value={newCaptionName}
+              onChange={e => setNewCaptionName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveCaption() }}
+              className="flex-1 px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded focus:outline-none focus:border-violet-500"
+            />
+            <button onClick={saveCaption} disabled={savingCaption} className="px-3 py-1 text-sm bg-violet-600 hover:bg-violet-700 rounded disabled:opacity-50">
+              {savingCaption ? '...' : 'Save'}
+            </button>
+            <button onClick={() => setShowSaveCaption(false)} className="text-sm text-gray-500 hover:text-white">Cancel</button>
+          </div>
+        )}
       </div>
 
       {/* Hashtags */}

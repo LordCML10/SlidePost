@@ -169,17 +169,18 @@ export default function LibraryPage() {
   const [newTagName, setNewTagName] = useState('')
   const [creatingTag, setCreatingTag] = useState(false)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  // silent=true: refresh without showing the loading spinner (used after upload)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const [tr, ir] = await Promise.all([
-        fetch('/api/tags').then(r => r.json()),
-        fetch('/api/images').then(r => r.json()),
+        fetch('/api/tags', { cache: 'no-store' }).then(r => r.json()),
+        fetch('/api/images', { cache: 'no-store' }).then(r => r.json()),
       ])
       setTags(tr.data ?? [])
       setImages(ir.data ?? [])
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
@@ -216,7 +217,7 @@ export default function LibraryPage() {
         const json = await res.json()
         if (!res.ok) throw new Error(json.error)
       }
-      await load()
+      await load(true) // silent refresh — no loading spinner, images appear in place
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
@@ -260,6 +261,14 @@ export default function LibraryPage() {
     setImages(prev => prev.filter(img => img.id !== imageId))
     setSelectedIds(prev => { const n = new Set(prev); n.delete(imageId); return n })
     setModalImage(null)
+  }
+
+  async function deleteSelected() {
+    if (!confirm(`Delete ${selectedCount} image${selectedCount !== 1 ? 's' : ''}? This cannot be undone.`)) return
+    const ids = Array.from(selectedIds)
+    await Promise.all(ids.map(id => fetch(`/api/images/${id}`, { method: 'DELETE' })))
+    setImages(prev => prev.filter(img => !selectedIds.has(img.id)))
+    setSelectedIds(new Set())
   }
 
   const selectedCount = selectedIds.size
@@ -363,12 +372,20 @@ export default function LibraryPage() {
           </button>
         )}
         {selectedCount > 0 && (
-          <button
-            onClick={() => setSelectedIds(new Set())}
-            className="ml-auto text-xs text-gray-500 hover:text-white"
-          >
-            Clear ({selectedCount})
-          </button>
+          <div className="ml-auto flex items-center gap-3">
+            <button
+              onClick={deleteSelected}
+              className="text-xs text-red-400 hover:text-red-300 transition-colors"
+            >
+              Delete ({selectedCount})
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs text-gray-500 hover:text-white transition-colors"
+            >
+              Clear
+            </button>
+          </div>
         )}
       </div>
 

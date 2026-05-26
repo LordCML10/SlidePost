@@ -61,14 +61,12 @@ function DraftCard({
           <p className="text-xs text-gray-600">{hashtagCount} hashtag{hashtagCount !== 1 ? 's' : ''}</p>
         )}
         <div className="flex gap-2 mt-3">
-          {!draft.posted && (
-            <button
-              onClick={onEdit}
-              className="flex-1 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 rounded-md transition-colors"
-            >
-              Edit
-            </button>
-          )}
+          <button
+            onClick={onEdit}
+            className="flex-1 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 rounded-md transition-colors"
+          >
+            {draft.posted ? 'Edit & Reuse' : 'Edit'}
+          </button>
           <button
             onClick={onDelete}
             className="flex-1 py-1.5 text-xs border border-gray-800 hover:border-red-800 hover:text-red-400 rounded-md transition-colors"

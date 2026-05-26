@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 const links = [
   { href: '/library', label: 'Library' },
   { href: '/drafts', label: 'Drafts' },
+  { href: '/captions', label: 'Captions' },
 ]
 
 export default function Nav() {

@@ -40,6 +40,14 @@ export type Draft = {
   created_at: string
 }
 
+export type Caption = {
+  id: string
+  name: string
+  text: string
+  user_id: string | null
+  created_at: string
+}
+
 export type BulkPostResult = {
   draftId: string
   success: boolean
