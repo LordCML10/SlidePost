@@ -266,26 +266,28 @@ export default function LibraryPage() {
 
   return (
     <div className="min-h-screen">
+      {importError && (
+        <div className="flex items-center justify-between gap-4 px-6 py-3 bg-red-900/40 border-b border-red-800 text-sm text-red-300">
+          <span>Upload failed: {importError}</span>
+          <button onClick={() => setImportError(null)} className="text-red-400 hover:text-white shrink-0">✕</button>
+        </div>
+      )}
       {/* Page header */}
       <div className="px-6 py-4 flex items-center justify-between border-b border-gray-800">
         <h1 className="text-xl font-semibold">Library</h1>
         <div className="flex items-center gap-3">
-          {importError && <span className="text-sm text-red-400">{importError}</span>}
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={handleImport}
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={importing}
-            className="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
-          >
+          {/* Label wraps the input — works in all browsers including Firefox */}
+          <label className={`px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer select-none ${importing ? 'opacity-50 pointer-events-none' : ''}`}>
             {importing ? 'Importing...' : '↑ Import'}
-          </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleImport}
+            />
+          </label>
           <button
             onClick={() => router.push(`/builder?images=${Array.from(selectedIds).slice(0, 10).join(',')}`)}
             disabled={selectedCount < 2}
