@@ -266,9 +266,22 @@ export default function LibraryPage() {
   async function deleteSelected() {
     if (!confirm(`Delete ${selectedCount} image${selectedCount !== 1 ? 's' : ''}? This cannot be undone.`)) return
     const ids = Array.from(selectedIds)
-    await Promise.all(ids.map(id => fetch(`/api/images/${id}`, { method: 'DELETE' })))
-    setImages(prev => prev.filter(img => !selectedIds.has(img.id)))
-    setSelectedIds(new Set())
+    try {
+      // Check every response — a silent 500 was causing "deleted" images to
+      // reappear on the next load() because the DB record wasn't actually removed
+      await Promise.all(
+        ids.map(async id => {
+          const res = await fetch(`/api/images/${id}`, { method: 'DELETE' })
+          const json = await res.json()
+          if (!res.ok) throw new Error(json.error ?? 'Delete failed')
+        })
+      )
+      setImages(prev => prev.filter(img => !selectedIds.has(img.id)))
+      setSelectedIds(new Set())
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Delete failed')
+      await load(true) // resync with what DB actually has
+    }
   }
 
   const selectedCount = selectedIds.size

@@ -65,7 +65,7 @@ function DraftCard({
             onClick={onEdit}
             className="flex-1 py-1.5 text-xs bg-gray-800 hover:bg-gray-700 rounded-md transition-colors"
           >
-            {draft.posted ? 'Edit & Reuse' : 'Edit'}
+            Edit
           </button>
           <button
             onClick={onDelete}
@@ -129,13 +129,11 @@ export default function DraftsPage() {
     setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n })
   }
 
-  const unpostedSelected = Array.from(selectedIds).filter(id => {
-    const draft = drafts.find(d => d.id === id)
-    return draft && !draft.posted
-  })
+  // Any selected draft can be posted — posted or not
+  const selectedArray = Array.from(selectedIds)
 
   async function postSelected() {
-    if (!unpostedSelected.length) return
+    if (!selectedArray.length) return
     setPosting(true)
     setResults(null)
     setError(null)
@@ -143,7 +141,7 @@ export default function DraftsPage() {
       const res = await fetch('/api/drafts/bulk-post', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ draftIds: unpostedSelected }),
+        body: JSON.stringify({ draftIds: selectedArray }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
@@ -157,8 +155,7 @@ export default function DraftsPage() {
     }
   }
 
-  const unpostedDrafts = drafts.filter(d => !d.posted)
-  const allUnpostedSelected = unpostedDrafts.length > 0 && unpostedDrafts.every(d => selectedIds.has(d.id))
+  const allSelected = drafts.length > 0 && drafts.every(d => selectedIds.has(d.id))
 
   return (
     <div className="min-h-screen">
@@ -166,21 +163,21 @@ export default function DraftsPage() {
       <div className="px-6 py-4 flex items-center justify-between border-b border-gray-800">
         <h1 className="text-xl font-semibold">Draft Queue</h1>
         <div className="flex items-center gap-3">
-          {unpostedDrafts.length > 0 && (
+          {drafts.length > 0 && (
             <button
-              onClick={() => setSelectedIds(allUnpostedSelected ? new Set() : new Set(unpostedDrafts.map(d => d.id)))}
+              onClick={() => setSelectedIds(allSelected ? new Set() : new Set(drafts.map(d => d.id)))}
               className="text-sm text-gray-400 hover:text-white transition-colors"
             >
-              {allUnpostedSelected ? 'Deselect all' : 'Select all'}
+              {allSelected ? 'Deselect all' : 'Select all'}
             </button>
           )}
-          {unpostedSelected.length > 0 && (
+          {selectedArray.length > 0 && (
             <button
               onClick={postSelected}
               disabled={posting}
               className="px-4 py-1.5 text-sm bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors disabled:opacity-50"
             >
-              {posting ? 'Posting...' : `Post Selected (${unpostedSelected.length})`}
+              {posting ? 'Posting...' : `Post Selected (${selectedArray.length})`}
             </button>
           )}
         </div>
