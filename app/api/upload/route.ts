@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { uploadImageToBlob } from '@/lib/blob'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
@@ -7,6 +7,8 @@ const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024 // 5MB
 const MIN_PHOTOS = 2
 const MAX_PHOTOS = 10
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://slide-post.vercel.app'
 
 export async function POST(req: NextRequest) {
   const token = req.cookies.get('tt_access_token')?.value
@@ -45,18 +47,47 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://slide-post.vercel.app'
-
   try {
-    const urls = await Promise.all(
+    const images = await Promise.all(
       files.map(async (file) => {
+        const ext = file.name.split('.').pop() ?? 'jpg'
+        const storagePath = `${Date.now()}-${crypto.randomUUID()}.${ext}`
         const buf = await file.arrayBuffer()
-        const blobUrl = await uploadImageToBlob(file.name || `image-${Date.now()}`, buf, file.type)
-        // Return proxy URL so TikTok pulls from our verified domain
-        return `${appUrl}/api/image?src=${encodeURIComponent(blobUrl)}`
+
+        // Upload to Supabase Storage
+        const { error: uploadError } = await supabaseAdmin.storage
+          .from('images')
+          .upload(storagePath, buf, { contentType: file.type, upsert: false })
+
+        if (uploadError) throw new Error(uploadError.message)
+
+        // Get public URL (no suffix collision possible — UUID in path)
+        const { data: { publicUrl } } = supabaseAdmin.storage
+          .from('images')
+          .getPublicUrl(storagePath)
+
+        // Save metadata to DB
+        const { data: imageRecord, error: dbError } = await supabaseAdmin
+          .from('images')
+          .insert({
+            filename: file.name || storagePath,
+            storage_path: storagePath,
+            public_url: publicUrl,
+          })
+          .select()
+          .single()
+
+        if (dbError) throw new Error(dbError.message)
+
+        // Compute proxy_url at query time — never stored in DB
+        return {
+          ...imageRecord,
+          proxy_url: `${appUrl}/api/image?src=${encodeURIComponent(publicUrl)}`,
+        }
       })
     )
-    return NextResponse.json({ data: { urls } })
+
+    return NextResponse.json({ data: { images } })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[/api/upload] Error:', message)
