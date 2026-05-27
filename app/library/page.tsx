@@ -177,8 +177,11 @@ export default function LibraryPage() {
         fetch('/api/tags', { cache: 'no-store' }).then(r => r.json()),
         fetch('/api/images', { cache: 'no-store' }).then(r => r.json()),
       ])
+      if (ir.error) throw new Error(`/api/images: ${ir.error}`)
       setTags(tr.data ?? [])
       setImages(ir.data ?? [])
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Failed to load images')
     } finally {
       if (!silent) setLoading(false)
     }
