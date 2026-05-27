@@ -31,10 +31,14 @@ export async function GET(req: NextRequest) {
     query = query.eq('tag_id', tagId)
   }
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'MISSING'
+  const keySnippet = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'MISSING').slice(-8)
+  console.log(`[/api/images] url=${supabaseUrl} key_tail=${keySnippet}`)
+
   const { data, error } = await query
 
   if (error) {
-    console.error('[/api/images] Supabase error:', error)
+    console.error('[/api/images] Supabase error:', JSON.stringify(error))
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
   console.log('[/api/images] rows returned:', data?.length ?? 0)
