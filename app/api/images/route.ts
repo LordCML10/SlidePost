@@ -33,6 +33,10 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await query
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data: data.map(withProxyUrl) })
+  if (error) {
+    console.error('[/api/images] Supabase error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  console.log('[/api/images] rows returned:', data?.length ?? 0)
+  return NextResponse.json({ data: (data ?? []).map(withProxyUrl) })
 }
