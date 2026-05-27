@@ -47,12 +47,20 @@ export async function DELETE(
     }
   }
 
-  // Delete DB record
-  const { error: dbError } = await supabaseAdmin
+  // Delete DB record — use .select() so we can detect 0-row matches (silent no-op)
+  const { data: deleted, error: dbError } = await supabaseAdmin
     .from('images')
     .delete()
     .eq('id', id)
+    .select()
 
-  if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 })
+  if (dbError) {
+    console.error('[/api/images] DB delete error:', JSON.stringify(dbError))
+    return NextResponse.json({ error: dbError.message }, { status: 500 })
+  }
+  if (!deleted || deleted.length === 0) {
+    console.warn('[/api/images] Delete matched 0 rows for id:', id)
+    return NextResponse.json({ error: `No image found with id ${id}` }, { status: 404 })
+  }
   return NextResponse.json({ data: { success: true } })
 }
