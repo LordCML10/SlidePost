@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
           .getPublicUrl(storagePath)
 
         // Save metadata to DB
-        const { data: imageRecord, error: dbError } = await supabaseAdmin
+        const { data: inserted, error: dbError } = await supabaseAdmin
           .from('images')
           .insert({
             filename: file.name || storagePath,
@@ -69,9 +69,12 @@ export async function POST(req: NextRequest) {
             public_url: publicUrl,
           })
           .select()
-          .single()
 
         if (dbError) throw new Error(dbError.message)
+        if (!inserted || inserted.length === 0) {
+          throw new Error('Image saved to storage but DB insert returned no record — check Supabase service role key')
+        }
+        const imageRecord = inserted[0]
 
         // Compute proxy_url at query time — never stored in DB
         return {

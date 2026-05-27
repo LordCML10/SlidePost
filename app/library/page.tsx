@@ -215,11 +215,17 @@ export default function LibraryPage() {
         files.slice(i, i + 10).forEach(f => fd.append('images', f))
         const res = await fetch('/api/upload', { method: 'POST', body: fd })
         const json = await res.json()
-        if (!res.ok) throw new Error(json.error)
+        if (!res.ok) throw new Error(json.error ?? 'Upload failed')
+        // Immediately prepend returned images so they appear without waiting for a refetch
+        const newImages: ImageWithProxy[] = json.data?.images ?? []
+        if (newImages.length > 0) {
+          setImages(prev => [...newImages, ...prev])
+        }
       }
-      await load(true) // silent refresh — no loading spinner, images appear in place
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Upload failed')
+      // Resync with DB so UI reflects actual state
+      await load(true)
     } finally {
       setImporting(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -257,7 +263,14 @@ export default function LibraryPage() {
   }
 
   async function deleteImage(imageId: string) {
-    await fetch(`/api/images/${imageId}`, { method: 'DELETE' })
+    const res = await fetch(`/api/images/${imageId}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}))
+      setImportError(json.error ?? 'Delete failed')
+      await load(true)
+      setModalImage(null)
+      return
+    }
     setImages(prev => prev.filter(img => img.id !== imageId))
     setSelectedIds(prev => { const n = new Set(prev); n.delete(imageId); return n })
     setModalImage(null)
@@ -302,6 +315,7 @@ export default function LibraryPage() {
           <label className={`px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer select-none ${importing ? 'opacity-50 pointer-events-none' : ''}`}>
             {importing ? 'Importing...' : '↑ Import'}
             <input
+              id="file-import-input"
               ref={fileInputRef}
               type="file"
               multiple
@@ -410,12 +424,12 @@ export default function LibraryPage() {
           images.length === 0 ? (
             <div className="text-center py-24">
               <p className="text-gray-500 mb-4">No images yet.</p>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg text-sm transition-colors"
+              <label
+                htmlFor="file-import-input"
+                className="px-4 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg text-sm transition-colors cursor-pointer"
               >
                 ↑ Import your first images
-              </button>
+              </label>
             </div>
           ) : (
             <div className="space-y-8">

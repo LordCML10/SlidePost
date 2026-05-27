@@ -17,7 +17,7 @@ export async function PATCH(
     .update({ tag_id: tag_id ?? null })
     .eq('id', id)
     .select()
-    .single()
+    .maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ data })
@@ -29,23 +29,22 @@ export async function DELETE(
 ) {
   const { id } = params
 
-  // Get storage_path before deleting so we can remove the file too
-  const { data: image, error: fetchError } = await supabaseAdmin
+  // Get storage_path before deleting — use maybeSingle so 0 rows returns null, not an error
+  const { data: image } = await supabaseAdmin
     .from('images')
     .select('storage_path')
     .eq('id', id)
-    .single()
+    .maybeSingle()
 
-  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
+  // Best-effort storage delete (only if we found the record)
+  if (image?.storage_path) {
+    const { error: storageError } = await supabaseAdmin.storage
+      .from('images')
+      .remove([image.storage_path])
 
-  // Delete file from Supabase Storage
-  const { error: storageError } = await supabaseAdmin.storage
-    .from('images')
-    .remove([image.storage_path])
-
-  if (storageError) {
-    // Log but don't block — still clean up the DB record
-    console.error('[/api/images] Storage delete error:', storageError.message)
+    if (storageError) {
+      console.error('[/api/images] Storage delete error:', storageError.message)
+    }
   }
 
   // Delete DB record
