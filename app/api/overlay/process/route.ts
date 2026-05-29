@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic'
 let fontData: Buffer | null = null
 function loadFont(): Buffer {
   if (fontData) return fontData
-  const p = path.join(process.cwd(), 'public/fonts/TikTokSans-VariableFont_opsz_slnt_wdth_wght.ttf')
+  // Satori cannot parse variable fonts — must use a static weight
+  const p = path.join(process.cwd(), 'public/fonts/TikTokSans-ExtraBold.ttf')
   fontData = fs.readFileSync(p)
   return fontData
 }
