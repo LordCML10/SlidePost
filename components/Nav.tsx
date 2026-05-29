@@ -42,12 +42,22 @@ export default function Nav() {
         ))}
       </div>
 
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-3">
         {connected === null ? null : connected ? (
-          <span className="flex items-center gap-1.5 text-xs text-green-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
-            TikTok connected
-          </span>
+          <>
+            <span className="flex items-center gap-1.5 text-xs text-green-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+              TikTok connected
+            </span>
+            <form method="POST" action="/api/auth/tiktok/disconnect">
+              <button
+                type="submit"
+                className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+              >
+                Disconnect
+              </button>
+            </form>
+          </>
         ) : (
           <a
             href="/api/auth/tiktok"
