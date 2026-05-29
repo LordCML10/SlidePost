@@ -11,7 +11,10 @@ interface Slide {
   position: Position
 }
 
-// TikTok-exact text overlay styles — matches the burned SVG output
+// TikTok-exact text overlay styles
+// -webkit-text-stroke gives a clean uniform outline (matches TikTok's stroke rendering).
+// 8-directional shadows left tiny diagonal gaps; this is a true stroke.
+// 6px stroke = ~3px visible outside each letter (half is inside, covered by white fill).
 const OVERLAY_BASE: React.CSSProperties = {
   fontFamily: "'TikTokSans', 'Arial Black', sans-serif",
   fontWeight: 800,
@@ -20,17 +23,8 @@ const OVERLAY_BASE: React.CSSProperties = {
   textAlign: 'center',
   letterSpacing: '-0.3px',
   lineHeight: 1.25,
-  textShadow: [
-    '3px 3px 0px rgba(0,0,0,0.95)',
-    '-3px -3px 0px rgba(0,0,0,0.95)',
-    '3px -3px 0px rgba(0,0,0,0.95)',
-    '-3px 3px 0px rgba(0,0,0,0.95)',
-    '0px 3px 0px rgba(0,0,0,0.95)',
-    '0px -3px 0px rgba(0,0,0,0.95)',
-    '3px 0px 0px rgba(0,0,0,0.95)',
-    '-3px 0px 0px rgba(0,0,0,0.95)',
-    '0 0 12px rgba(0,0,0,0.8)',
-  ].join(', '),
+  WebkitTextStroke: '6px rgba(0,0,0,0.95)',
+  textShadow: '0 0 15px rgba(0,0,0,0.8)',
   padding: '0 16px',
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',

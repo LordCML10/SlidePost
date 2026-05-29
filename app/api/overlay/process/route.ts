@@ -1,24 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createCanvas, GlobalFonts } from '@napi-rs/canvas'
 import sharp from 'sharp'
 import path from 'path'
-import fs from 'fs'
 
 export const dynamic = 'force-dynamic'
 
-// Module-level cache — font is read once per cold start
-let fontBase64: string | null = null
-
-function loadFont(): string {
-  if (fontBase64 !== null) return fontBase64
+// Register font once per cold start
+let fontRegistered = false
+function ensureFont() {
+  if (fontRegistered) return
   try {
-    const p = path.join(process.cwd(), 'public/fonts/TikTokSans-VariableFont_opsz_slnt_wdth_wght.ttf')
-    fontBase64 = fs.readFileSync(p).toString('base64')
+    const fontPath = path.join(process.cwd(), 'public/fonts/TikTokSans-VariableFont_opsz_slnt_wdth_wght.ttf')
+    GlobalFonts.registerFromPath(fontPath, 'TikTokSans')
+    fontRegistered = true
   } catch {
-    // Font unavailable — Sharp will fall back to a system bold sans-serif.
-    // The outline effect will still look correct.
-    fontBase64 = ''
+    // Falls back to system font — outline effect still renders correctly
   }
-  return fontBase64
 }
 
 function escapeXml(str: string): string {
@@ -30,23 +27,27 @@ function escapeXml(str: string): string {
     .replace(/'/g, '&apos;')
 }
 
-// Word-wrap — respects explicit \n from textarea, wraps long lines at word boundaries
-function wrapText(text: string, charsPerLine: number): string[] {
+// Word-wrap using actual canvas text metrics — much more accurate than char-count
+function wrapText(
+  ctx: ReturnType<ReturnType<typeof createCanvas>['getContext']>,
+  text: string,
+  maxWidth: number
+): string[] {
   const lines: string[] = []
   for (const para of text.split('\n')) {
     if (!para.trim()) continue
     const words = para.trim().split(/\s+/)
-    let current = ''
+    let line = ''
     for (const word of words) {
-      const candidate = current ? `${current} ${word}` : word
-      if (candidate.length <= charsPerLine) {
-        current = candidate
+      const candidate = line ? `${line} ${word}` : word
+      if (ctx.measureText(candidate).width <= maxWidth) {
+        line = candidate
       } else {
-        if (current) lines.push(current)
-        current = word // single word longer than limit — push it anyway
+        if (line) lines.push(line)
+        line = word // push oversized single word as-is
       }
     }
-    if (current) lines.push(current)
+    if (line) lines.push(line)
   }
   return lines.length > 0 ? lines : ['']
 }
@@ -67,38 +68,46 @@ export async function POST(req: NextRequest) {
   if (!text.trim()) return NextResponse.json({ error: 'No text provided' }, { status: 400 })
 
   try {
+    ensureFont()
+
     const buf = Buffer.from(await file.arrayBuffer())
     const img = sharp(buf)
     const { width: imageWidth = 1080, height: imageHeight = 1920 } = await img.metadata()
 
-    // Scale all values proportionally from the 270px CSS preview
+    // Scale from the 270px CSS preview reference
     const scale = imageWidth / 270
     const fontSize = Math.round(22 * scale)
-    const strokeWidth = Math.round(6 * scale)   // 3px * 2 → covers all 8 shadow directions
+    // Stroke: 6px at preview = 6 * scale at full res. Half is inside letter (covered by fill),
+    // so ~3 * scale px of visible outline — matches the CSS -webkit-text-stroke: 6px approach.
+    const strokeWidth = Math.round(6 * scale)
     const padding = Math.round(16 * scale)
     const lineHeight = Math.round(fontSize * 1.25)
-    const letterSpacing = +(-0.3 * scale).toFixed(1)
     const cx = imageWidth / 2
 
-    // Bold sans-serif chars are ≈ 0.55× font-size wide — approximate wrap point
-    const charsPerLine = Math.max(1, Math.floor((imageWidth - padding * 2) / (fontSize * 0.55)))
-    const lines = wrapText(text, charsPerLine)
+    // Create canvas the same size as the image — transparent background
+    const canvas = createCanvas(imageWidth, imageHeight)
+    const ctx = canvas.getContext('2d')
 
-    // Calculate baseline Y of first line
-    const blockSpan = (lines.length - 1) * lineHeight // distance first→last baseline
+    ctx.font = `800 ${fontSize}px TikTokSans, Arial Black, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'alphabetic'
+    ctx.letterSpacing = `${(-0.3 * scale).toFixed(1)}px`
+
+    const maxWidth = imageWidth - padding * 2
+    const lines = wrapText(ctx, text, maxWidth)
+
+    // Calculate Y of first line baseline
+    const blockSpan = (lines.length - 1) * lineHeight
     let firstY: number
 
     switch (position) {
       case 'top': {
-        // Safe zone: 150px from top on a 1920px-tall image, scaled to actual height
         const safeTop = Math.round(150 * (imageHeight / 1920))
         firstY = safeTop + Math.round(fontSize * 0.8)
         break
       }
       case 'bottom': {
-        // Safe zone: 200px from bottom on a 1920px-tall image, scaled to actual height
         const safeBottom = imageHeight - Math.round(200 * (imageHeight / 1920))
-        // Anchor last baseline at safeBottom, step first baseline back up
         firstY = safeBottom - blockSpan - Math.round(fontSize * 0.25)
         break
       }
@@ -108,41 +117,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // tspan elements — shared between stroke pass and fill pass
-    const tspans = lines
-      .map((line, i) => `<tspan x="${cx}" dy="${i === 0 ? 0 : lineHeight}">${escapeXml(line)}</tspan>`)
-      .join('')
+    // Draw each line: stroke pass first (black outline), then fill pass (white text).
+    // lineJoin 'round' prevents sharp spikes at letter corners.
+    ctx.lineJoin = 'round'
+    ctx.lineWidth = strokeWidth
+    ctx.strokeStyle = 'rgba(0,0,0,0.95)'
+    ctx.fillStyle = 'white'
 
-    const commonAttrs = `
-      x="${cx}" y="${firstY}"
-      text-anchor="middle"
-      font-family="TikTokSans, 'Arial Black', sans-serif"
-      font-weight="800"
-      font-size="${fontSize}"
-      letter-spacing="${letterSpacing}"
-    `.trim()
+    lines.forEach((line, i) => {
+      const y = firstY + i * lineHeight
+      ctx.strokeText(line, cx, y)
+      ctx.fillText(line, cx, y)
+    })
 
-    // Embed font as base64 so librsvg can use it — gracefully omitted if file missing
-    const font64 = loadFont()
-    const fontFace = font64
-      ? `<defs><style>@font-face{font-family:'TikTokSans';src:url('data:font/truetype;base64,${font64}');font-weight:100 900;}</style></defs>`
-      : ''
-
-    // Double-render: stroke pass first (black outline), fill pass on top (white text).
-    // This is more compatible than paint-order across librsvg versions.
-    const svg = `<svg width="${imageWidth}" height="${imageHeight}" xmlns="http://www.w3.org/2000/svg">
-  ${fontFace}
-  <text ${commonAttrs}
-    fill="rgba(0,0,0,0.95)"
-    stroke="rgba(0,0,0,0.95)"
-    stroke-width="${strokeWidth}"
-    stroke-linejoin="round"
-  >${tspans}</text>
-  <text ${commonAttrs} fill="white">${tspans}</text>
-</svg>`
-
+    // Composite canvas (PNG) onto original image, output as JPEG
+    const textLayer = canvas.toBuffer('image/png')
     const output = await img
-      .composite([{ input: Buffer.from(svg), blend: 'over' }])
+      .composite([{ input: textLayer, blend: 'over' }])
       .jpeg({ quality: 90 })
       .toBuffer()
 
