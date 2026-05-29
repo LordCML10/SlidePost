@@ -8,6 +8,14 @@
   font-weight: 100 900;
 }
 
+/* Exact-match at 800 so the live preview uses the same static ExtraBold
+   file that Satori burns into the image — keeps preview === output. */
+@font-face {
+  font-family: 'TikTokSans';
+  src: url('/fonts/TikTokSans-ExtraBold.ttf');
+  font-weight: 800;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
