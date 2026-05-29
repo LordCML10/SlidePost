@@ -77,19 +77,29 @@ export async function POST(req: NextRequest) {
     const img = sharp(buf)
     const { width: w = 1080, height: h = 1920 } = await img.metadata()
 
-    const scale = w / 270
-    const fontSize = Math.round(22 * scale)
-    const strokeWidth = Math.round(4 * scale)  // 4px at preview = ~2px visible outline (matches TikTok)
+    // Size & position relative to the 9:16 region TikTok actually shows.
+    // The preview mockup cover-crops to 9:16; sizing text off the raw image
+    // width makes it balloon when the source isn't 9:16. Computing the visible
+    // 9:16 crop keeps burned === preview === native for any aspect ratio.
+    const taller = w / h < 9 / 16                     // narrower than 9:16 → full width visible
+    const cropW = taller ? w : Math.round(h * 9 / 16)
+    const cropH = taller ? Math.round(w * 16 / 9) : h
+    const offsetX = Math.round((w - cropW) / 2)
+    const offsetY = Math.round((h - cropH) / 2)
+
+    const scale = cropW / 270
+    const fontSize = Math.round(20 * scale)
+    const strokeWidth = Math.round(4 * scale)  // ~2px visible outline (matches TikTok)
     const padding = Math.round(16 * scale)
     const lineGap = Math.round(fontSize * 0.25) // (lineHeight 1.25 - 1) × fontSize
 
-    // Word-wrap
-    const charsPerLine = Math.max(1, Math.floor((w - padding * 2) / (fontSize * 0.55)))
+    // Word-wrap within the visible crop
+    const charsPerLine = Math.max(1, Math.floor((cropW - padding * 2) / (fontSize * 0.55)))
     const lines = wrapText(text, charsPerLine)
 
-    // TikTok safe zones scaled from 1080×1920 reference
-    const safeTop = Math.round(150 * (h / 1920))
-    const safeBottom = Math.round(200 * (h / 1920))
+    // TikTok safe zones scaled from 1080×1920 reference, relative to visible crop
+    const safeTop = Math.round(150 * (cropH / 1920))
+    const safeBottom = Math.round(200 * (cropH / 1920))
 
     const justifyContent =
       position === 'top'    ? 'flex-start' :
@@ -120,8 +130,8 @@ export async function POST(req: NextRequest) {
           flexDirection: 'column' as const,
           alignItems: 'center',
           justifyContent,
-          width: w,
-          height: h,
+          width: cropW,
+          height: cropH,
           paddingTop: safeTop,
           paddingBottom: safeBottom,
           paddingLeft: padding,
@@ -134,8 +144,8 @@ export async function POST(req: NextRequest) {
     // Satori renders text as SVG <path> elements — no native deps, works on Vercel
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const satoriSvg = await satori(element as any, {
-      width: w,
-      height: h,
+      width: cropW,
+      height: cropH,
       fonts: [{ name: 'TikTokSans', data: font, weight: 800, style: 'normal' }],
     })
 
@@ -144,7 +154,8 @@ export async function POST(req: NextRequest) {
 
     // Composite text SVG onto original image and return as JPEG
     const output = await img
-      .composite([{ input: Buffer.from(svgWithStroke), blend: 'over' }])
+      // Place the crop-sized text layer over the centered 9:16 visible region
+      .composite([{ input: Buffer.from(svgWithStroke), top: offsetY, left: offsetX, blend: 'over' }])
       .jpeg({ quality: 90 })
       .toBuffer()
 

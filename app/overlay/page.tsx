@@ -18,7 +18,7 @@ interface Slide {
 const OVERLAY_BASE: React.CSSProperties = {
   fontFamily: "'TikTokSans', 'Arial Black', sans-serif",
   fontWeight: 800,
-  fontSize: '22px',
+  fontSize: '20px',
   color: '#ffffff',
   textAlign: 'center',
   letterSpacing: '-0.3px',
