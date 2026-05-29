@@ -1,55 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createCanvas, GlobalFonts } from '@napi-rs/canvas'
+import satori from 'satori'
 import sharp from 'sharp'
 import path from 'path'
+import fs from 'fs'
 
 export const dynamic = 'force-dynamic'
 
-// Register font once per cold start
-let fontRegistered = false
-function ensureFont() {
-  if (fontRegistered) return
-  try {
-    const fontPath = path.join(process.cwd(), 'public/fonts/TikTokSans-VariableFont_opsz_slnt_wdth_wght.ttf')
-    GlobalFonts.registerFromPath(fontPath, 'TikTokSans')
-    fontRegistered = true
-  } catch {
-    // Falls back to system font — outline effect still renders correctly
-  }
+// Font cached at module level — read once per cold start
+let fontData: Buffer | null = null
+function loadFont(): Buffer {
+  if (fontData) return fontData
+  const p = path.join(process.cwd(), 'public/fonts/TikTokSans-VariableFont_opsz_slnt_wdth_wght.ttf')
+  fontData = fs.readFileSync(p)
+  return fontData
 }
 
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
-}
-
-// Word-wrap using actual canvas text metrics — much more accurate than char-count
-function wrapText(
-  ctx: ReturnType<ReturnType<typeof createCanvas>['getContext']>,
-  text: string,
-  maxWidth: number
-): string[] {
+// Word-wrap by character count (proportional: bold sans ≈ 0.55× font-size per char)
+function wrapText(text: string, charsPerLine: number): string[] {
   const lines: string[] = []
   for (const para of text.split('\n')) {
     if (!para.trim()) continue
     const words = para.trim().split(/\s+/)
-    let line = ''
+    let cur = ''
     for (const word of words) {
-      const candidate = line ? `${line} ${word}` : word
-      if (ctx.measureText(candidate).width <= maxWidth) {
-        line = candidate
+      const test = cur ? `${cur} ${word}` : word
+      if (test.length <= charsPerLine) {
+        cur = test
       } else {
-        if (line) lines.push(line)
-        line = word // push oversized single word as-is
+        if (cur) lines.push(cur)
+        cur = word // oversized word gets its own line
       }
     }
-    if (line) lines.push(line)
+    if (cur) lines.push(cur)
   }
   return lines.length > 0 ? lines : ['']
+}
+
+// Satori converts text to <path fill="white" d="..."/> elements.
+// Clone each path as a black outline and insert the clones before the
+// originals — outline renders behind the white fill, giving the TikTok look.
+function addStroke(svg: string, strokeWidth: number): string {
+  const strokes: string[] = []
+  const re = /<path\b([^>]*)\/>/g
+  let m
+  while ((m = re.exec(svg)) !== null) {
+    const attrs = m[1].replace(/\bfill="[^"]*"/, '')
+    strokes.push(
+      `<path${attrs} fill="rgba(0,0,0,0.95)" stroke="rgba(0,0,0,0.95)" stroke-width="${strokeWidth}" stroke-linejoin="round"/>`
+    )
+  }
+  if (!strokes.length) return svg
+  // Insert before first <path> so stroke is drawn beneath the white fill
+  const idx = svg.indexOf('<path')
+  return svg.slice(0, idx) + strokes.join('') + svg.slice(idx)
 }
 
 export async function POST(req: NextRequest) {
@@ -68,72 +71,78 @@ export async function POST(req: NextRequest) {
   if (!text.trim()) return NextResponse.json({ error: 'No text provided' }, { status: 400 })
 
   try {
-    ensureFont()
-
+    const font = loadFont()
     const buf = Buffer.from(await file.arrayBuffer())
     const img = sharp(buf)
-    const { width: imageWidth = 1080, height: imageHeight = 1920 } = await img.metadata()
+    const { width: w = 1080, height: h = 1920 } = await img.metadata()
 
-    // Scale from the 270px CSS preview reference
-    const scale = imageWidth / 270
+    const scale = w / 270
     const fontSize = Math.round(22 * scale)
-    // Stroke: 6px at preview = 6 * scale at full res. Half is inside letter (covered by fill),
-    // so ~3 * scale px of visible outline — matches the CSS -webkit-text-stroke: 6px approach.
-    const strokeWidth = Math.round(6 * scale)
+    const strokeWidth = Math.round(6 * scale)  // 6px at preview = ~3px visible outline
     const padding = Math.round(16 * scale)
-    const lineHeight = Math.round(fontSize * 1.25)
-    const cx = imageWidth / 2
+    const lineGap = Math.round(fontSize * 0.25) // (lineHeight 1.25 - 1) × fontSize
 
-    // Create canvas the same size as the image — transparent background
-    const canvas = createCanvas(imageWidth, imageHeight)
-    const ctx = canvas.getContext('2d')
+    // Word-wrap
+    const charsPerLine = Math.max(1, Math.floor((w - padding * 2) / (fontSize * 0.55)))
+    const lines = wrapText(text, charsPerLine)
 
-    ctx.font = `800 ${fontSize}px TikTokSans, Arial Black, sans-serif`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'alphabetic'
-    ctx.letterSpacing = `${(-0.3 * scale).toFixed(1)}px`
+    // TikTok safe zones scaled from 1080×1920 reference
+    const safeTop = Math.round(150 * (h / 1920))
+    const safeBottom = Math.round(200 * (h / 1920))
 
-    const maxWidth = imageWidth - padding * 2
-    const lines = wrapText(ctx, text, maxWidth)
+    const justifyContent =
+      position === 'top'    ? 'flex-start' :
+      position === 'bottom' ? 'flex-end'   : 'center'
 
-    // Calculate Y of first line baseline
-    const blockSpan = (lines.length - 1) * lineHeight
-    let firstY: number
+    // Build Satori element — each line as its own div for exact spacing control
+    const lineElements = lines.map((line, i) => ({
+      type: 'div',
+      props: {
+        style: {
+          fontFamily: 'TikTokSans',
+          fontWeight: 800,
+          fontSize,
+          color: 'white',
+          textAlign: 'center' as const,
+          lineHeight: 1,
+          marginTop: i === 0 ? 0 : lineGap,
+        },
+        children: line,
+      },
+    }))
 
-    switch (position) {
-      case 'top': {
-        const safeTop = Math.round(150 * (imageHeight / 1920))
-        firstY = safeTop + Math.round(fontSize * 0.8)
-        break
-      }
-      case 'bottom': {
-        const safeBottom = imageHeight - Math.round(200 * (imageHeight / 1920))
-        firstY = safeBottom - blockSpan - Math.round(fontSize * 0.25)
-        break
-      }
-      default: { // center
-        firstY = Math.round(imageHeight / 2) - Math.round(blockSpan / 2) + Math.round(fontSize * 0.3)
-        break
-      }
+    const element = {
+      type: 'div',
+      props: {
+        style: {
+          display: 'flex',
+          flexDirection: 'column' as const,
+          alignItems: 'center',
+          justifyContent,
+          width: w,
+          height: h,
+          paddingTop: safeTop,
+          paddingBottom: safeBottom,
+          paddingLeft: padding,
+          paddingRight: padding,
+        },
+        children: lineElements,
+      },
     }
 
-    // Draw each line: stroke pass first (black outline), then fill pass (white text).
-    // lineJoin 'round' prevents sharp spikes at letter corners.
-    ctx.lineJoin = 'round'
-    ctx.lineWidth = strokeWidth
-    ctx.strokeStyle = 'rgba(0,0,0,0.95)'
-    ctx.fillStyle = 'white'
-
-    lines.forEach((line, i) => {
-      const y = firstY + i * lineHeight
-      ctx.strokeText(line, cx, y)
-      ctx.fillText(line, cx, y)
+    // Satori renders text as SVG <path> elements — no native deps, works on Vercel
+    const satoriSvg = await satori(element, {
+      width: w,
+      height: h,
+      fonts: [{ name: 'TikTokSans', data: font, weight: 800, style: 'normal' }],
     })
 
-    // Composite canvas (PNG) onto original image, output as JPEG
-    const textLayer = canvas.toBuffer('image/png')
+    // Add black stroke paths behind the white fill paths
+    const svgWithStroke = addStroke(satoriSvg, strokeWidth)
+
+    // Composite text SVG onto original image and return as JPEG
     const output = await img
-      .composite([{ input: textLayer, blend: 'over' }])
+      .composite([{ input: Buffer.from(svgWithStroke), blend: 'over' }])
       .jpeg({ quality: 90 })
       .toBuffer()
 
