@@ -8,6 +8,7 @@ const links = [
   { href: '/library', label: 'Library' },
   { href: '/drafts', label: 'Drafts' },
   { href: '/captions', label: 'Captions' },
+  { href: '/overlay', label: 'Overlay' },
 ]
 
 export default function Nav() {

@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'TikTokSans';
+  src: url('/fonts/TikTokSans-VariableFont_opsz_slnt_wdth_wght.ttf');
+  font-weight: 100 900;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
