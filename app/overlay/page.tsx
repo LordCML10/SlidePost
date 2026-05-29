@@ -23,7 +23,7 @@ const OVERLAY_BASE: React.CSSProperties = {
   textAlign: 'center',
   letterSpacing: '-0.3px',
   lineHeight: 1.25,
-  WebkitTextStroke: '6px rgba(0,0,0,0.95)',
+  WebkitTextStroke: '4px rgba(0,0,0,0.95)',
   paintOrder: 'stroke', // render stroke behind fill so white text stays visible
   textShadow: '0 0 15px rgba(0,0,0,0.8)',
   padding: '0 16px',

@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     const scale = w / 270
     const fontSize = Math.round(22 * scale)
-    const strokeWidth = Math.round(6 * scale)  // 6px at preview = ~3px visible outline
+    const strokeWidth = Math.round(4 * scale)  // 4px at preview = ~2px visible outline (matches TikTok)
     const padding = Math.round(16 * scale)
     const lineGap = Math.round(fontSize * 0.25) // (lineHeight 1.25 - 1) × fontSize
 
