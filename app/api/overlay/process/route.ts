@@ -131,7 +131,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Satori renders text as SVG <path> elements — no native deps, works on Vercel
-    const satoriSvg = await satori(element, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const satoriSvg = await satori(element as any, {
       width: w,
       height: h,
       fonts: [{ name: 'TikTokSans', data: font, weight: 800, style: 'normal' }],
