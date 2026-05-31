@@ -17,13 +17,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider afterSignOutUrl="/sign-in">
-      <html lang="en">
-        <body className={`${geistSans.variable} antialiased bg-gray-950 text-white`}>
+    <html lang="en">
+      <body className={`${geistSans.variable} antialiased bg-gray-950 text-white`}>
+        <ClerkProvider afterSignOutUrl="/sign-in">
           <Nav />
           <main className="pt-14">{children}</main>
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   )
 }

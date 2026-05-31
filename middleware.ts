@@ -24,5 +24,7 @@ export const config = {
     // Skip Next.js internals and static files
     '/((?!_next/static|_next/image|favicon\\.ico).*)',
     '/',
+    // Required for Clerk's proxy to work
+    '/__clerk/(.*)',
   ],
 }
