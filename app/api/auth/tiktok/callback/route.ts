@@ -11,7 +11,9 @@ export async function GET(req: NextRequest) {
   const state = searchParams.get('state')
   const error = searchParams.get('error')
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  // Derive origin from the request so this works even if NEXT_PUBLIC_APP_URL
+  // is not set — avoids post-OAuth redirects landing on localhost in production.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin
 
   if (error) {
     console.error('[TikTok callback] TikTok returned error:', error)

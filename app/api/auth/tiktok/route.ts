@@ -9,9 +9,10 @@ export async function GET() {
   const params = new URLSearchParams({
     client_key: process.env.TIKTOK_CLIENT_KEY!,
     response_type: 'code',
-    // user.info.basic — needed for display name + avatar in account switcher.
-    // Requires this scope to be approved in your TikTok Developer Portal app settings.
-    scope: 'user.info.basic,video.upload',
+    // user.info.basic requires explicit approval in the TikTok Developer Portal.
+    // Omit it until approved — display name / avatar will be null but the
+    // connection will succeed. Add it back once the scope is approved.
+    scope: 'video.upload',
     redirect_uri: process.env.TIKTOK_REDIRECT_URI!,
     state,
   })
