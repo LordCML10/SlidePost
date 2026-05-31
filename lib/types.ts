@@ -54,3 +54,12 @@ export type BulkPostResult = {
   publish_id?: string
   error?: string
 }
+
+// TikTok account connected to a Clerk user (never exposes the encrypted token)
+export type TikTokAccount = {
+  id: string
+  open_id: string
+  display_name: string | null
+  avatar_url: string | null
+  created_at: string
+}

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { BulkPostResult, Draft, ImageWithProxy } from '@/lib/types'
+import type { BulkPostResult, Draft, ImageWithProxy, TikTokAccount } from '@/lib/types'
 
 // ─── Draft card ───────────────────────────────────────────────────────────────
 
@@ -91,6 +91,7 @@ export default function DraftsPage() {
   const [posting, setPosting] = useState(false)
   const [results, setResults] = useState<BulkPostResult[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [activeAccount, setActiveAccount] = useState<TikTokAccount | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -113,6 +114,16 @@ export default function DraftsPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    fetch('/api/auth/tiktok/accounts')
+      .then(r => r.json())
+      .then(j => {
+        const all: TikTokAccount[] = j.accounts ?? []
+        setActiveAccount(all.find(a => a.id === j.activeAccountId) ?? null)
+      })
+      .catch(() => {})
+  }, [])
 
   function toggleSelect(id: string) {
     setSelectedIds(prev => {
@@ -172,13 +183,23 @@ export default function DraftsPage() {
             </button>
           )}
           {selectedArray.length > 0 && (
-            <button
-              onClick={postSelected}
-              disabled={posting}
-              className="px-4 py-1.5 text-sm bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {posting ? 'Posting...' : `Post Selected (${selectedArray.length})`}
-            </button>
+            <div className="flex items-center gap-2">
+              {activeAccount && (
+                <span className="text-xs text-gray-500">
+                  as <span className="text-green-400">{activeAccount.display_name ?? `TikTok #${activeAccount.open_id.slice(-6)}`}</span>
+                </span>
+              )}
+              {!activeAccount && (
+                <a href="/api/auth/tiktok" className="text-xs text-yellow-500 hover:underline">Connect TikTok first</a>
+              )}
+              <button
+                onClick={postSelected}
+                disabled={posting || !activeAccount}
+                className="px-4 py-1.5 text-sm bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {posting ? 'Posting...' : `Post Selected (${selectedArray.length})`}
+              </button>
+            </div>
           )}
         </div>
       </div>

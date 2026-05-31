@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import type { Draft, ImageWithProxy, HashtagSet } from '@/lib/types'
+import type { Draft, ImageWithProxy, HashtagSet, TikTokAccount } from '@/lib/types'
 
 type Position = 'top' | 'center' | 'bottom'
 
@@ -130,6 +130,9 @@ export default function OverlayPage() {
   const [burnProgress, setBurnProgress] = useState(0)
   const [burnError, setBurnError] = useState<string | null>(null)
 
+  // Active TikTok account (for "posting as" indicator)
+  const [activeAccount, setActiveAccount] = useState<TikTokAccount | null | 'loading'>('loading')
+
   // Post to TikTok
   const [posting, setPosting] = useState(false)
   const [postStatus, setPostStatus] = useState<string | null>(null)
@@ -163,6 +166,15 @@ export default function OverlayPage() {
       .then(r => r.json())
       .then(j => { if (j.data) setHashtagSets(j.data) })
       .catch(() => {})
+
+    fetch('/api/auth/tiktok/accounts')
+      .then(r => r.json())
+      .then(j => {
+        const all: TikTokAccount[] = j.accounts ?? []
+        const active = all.find(a => a.id === j.activeAccountId) ?? null
+        setActiveAccount(active)
+      })
+      .catch(() => setActiveAccount(null))
   }, [])
 
   // Auto-switch to burned view when active slide gets burned
@@ -596,10 +608,26 @@ export default function OverlayPage() {
 
               {canPost && (
                 <>
+                  {/* TikTok account indicator */}
+                  {activeAccount === null ? (
+                    <p className="text-xs text-yellow-600">
+                      No TikTok account connected —{' '}
+                      <a href="/api/auth/tiktok" className="text-violet-400 hover:underline">Connect now</a>
+                    </p>
+                  ) : activeAccount !== 'loading' && (
+                    <p className="text-xs text-gray-500">
+                      Posting as{' '}
+                      <span className="text-green-400">
+                        {activeAccount.display_name ?? `TikTok #${activeAccount.open_id.slice(-6)}`}
+                      </span>
+                      {' '}· <a href="#" onClick={e => { e.preventDefault(); window.location.href='/api/auth/tiktok' }} className="text-violet-400 hover:underline">switch</a>
+                    </p>
+                  )}
+
                   {/* Download + Post */}
                   <div className="flex gap-2">
                     <button onClick={downloadAll} className="flex-1 py-2 rounded-xl text-sm font-medium bg-gray-800 hover:bg-gray-700 text-white transition-colors">↓ Download</button>
-                    <button onClick={postToTikTok} disabled={posting} className="flex-1 py-2 rounded-xl text-sm font-semibold bg-pink-600 hover:bg-pink-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <button onClick={postToTikTok} disabled={posting || activeAccount === null} className="flex-1 py-2 rounded-xl text-sm font-semibold bg-pink-600 hover:bg-pink-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                       {posting ? (postStatus ?? 'Posting…') : '🚀 Post to TikTok'}
                     </button>
                   </div>

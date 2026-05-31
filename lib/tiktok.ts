@@ -3,6 +3,7 @@ const TIKTOK_POST_URL = 'https://open.tiktokapis.com/v2/post/publish/content/ini
 
 export async function exchangeCodeForToken(code: string): Promise<{
   access_token: string
+  open_id: string
   expires_in: number
   refresh_token: string
   refresh_expires_in: number
@@ -77,4 +78,26 @@ export async function postPhotoSlideshow({
   }
 
   return data.data as { publish_id: string }
+}
+
+// Fetch TikTok display name and avatar (requires user.info.basic scope).
+// Returns nulls if the app doesn't have the scope or the call fails — non-fatal.
+export async function fetchTikTokUserInfo(
+  accessToken: string
+): Promise<{ display_name: string | null; avatar_url: string | null }> {
+  try {
+    const res = await fetch(
+      'https://open.tiktokapis.com/v2/user/info/?fields=display_name,avatar_url',
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    )
+    if (!res.ok) return { display_name: null, avatar_url: null }
+    const json = await res.json()
+    if (json.error?.code !== 'ok') return { display_name: null, avatar_url: null }
+    return {
+      display_name: json.data?.user?.display_name ?? null,
+      avatar_url: json.data?.user?.avatar_url ?? null,
+    }
+  } catch {
+    return { display_name: null, avatar_url: null }
+  }
 }

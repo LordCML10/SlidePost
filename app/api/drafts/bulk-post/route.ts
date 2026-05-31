@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { postPhotoSlideshow } from '@/lib/tiktok'
+import { getDecryptedToken } from '@/lib/tiktokAccounts'
 import type { BulkPostResult } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -12,9 +14,18 @@ function sleep(ms: number) {
 }
 
 export async function POST(req: NextRequest) {
-  const token = req.cookies.get('tt_access_token')?.value
-  if (!token) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+  // Auth — middleware already checked Clerk session, but we verify here too
+  const { userId } = await auth()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const activeAccountId = req.cookies.get('tt_active_account')?.value
+  if (!activeAccountId) {
+    return NextResponse.json(
+      { error: 'No active TikTok account — connect one using "Connect TikTok" in the nav.' },
+      { status: 401 }
+    )
   }
 
   const body = await req.json()
@@ -24,13 +35,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Provide at least one draft ID' }, { status: 400 })
   }
 
+  // Decrypt token once (IDOR check included)
+  let token: string
+  try {
+    token = await getDecryptedToken(activeAccountId, userId)
+  } catch {
+    return NextResponse.json({ error: 'TikTok account not found or not authorized' }, { status: 401 })
+  }
+
   const results: BulkPostResult[] = []
 
   for (let i = 0; i < draftIds.length; i++) {
     const draftId = draftIds[i]
 
     try {
-      // Fetch draft
       const { data: draft, error: draftError } = await supabaseAdmin
         .from('drafts')
         .select('*')
@@ -42,7 +60,6 @@ export async function POST(req: NextRequest) {
         continue
       }
 
-      // Fetch images — look up by IDs then restore order from image_ids array
       const { data: images, error: imagesError } = await supabaseAdmin
         .from('images')
         .select('id, public_url')
@@ -62,7 +79,6 @@ export async function POST(req: NextRequest) {
         `${appUrl}/api/image?src=${encodeURIComponent(img.public_url)}`
       )
 
-      // Resolve hashtags — set takes priority over custom
       let hashtags: string[] = []
       if (draft.hashtag_set_id) {
         const { data: set } = await supabaseAdmin
@@ -80,10 +96,8 @@ export async function POST(req: NextRequest) {
         .join(' ')
       const description = [draft.caption, hashtagStr].filter(Boolean).join('\n\n')
 
-      // Post to TikTok
       const result = await postPhotoSlideshow({ accessToken: token, imageUrls: proxyUrls, description })
 
-      // Mark draft as posted
       await supabaseAdmin
         .from('drafts')
         .update({
@@ -97,7 +111,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.error(`[/api/drafts/bulk-post] Draft ${draftId} failed:`, message)
-      results.push({ draftId, success: false, error: message })
+      results.push({ draftId, success: false, error: 'Something went wrong' })
     }
 
     // 2s buffer between posts — TikTok rate limit safety
