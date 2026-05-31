@@ -5,9 +5,9 @@ export const dynamic = 'force-dynamic'
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params
+  const { id } = await params
 
   const { error } = await supabaseAdmin
     .from('captions')

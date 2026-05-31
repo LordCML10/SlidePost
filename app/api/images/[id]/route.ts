@@ -5,9 +5,9 @@ export const dynamic = 'force-dynamic'
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params
+  const { id } = await params
   const body = await req.json()
   // tag_id can be a UUID string or null (to unassign)
   const { tag_id } = body
@@ -25,9 +25,9 @@ export async function PATCH(
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params
+  const { id } = await params
 
   // Get storage_path before deleting — use maybeSingle so 0 rows returns null, not an error
   const { data: image } = await supabaseAdmin
