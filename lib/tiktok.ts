@@ -80,6 +80,27 @@ export async function postPhotoSlideshow({
   return data.data as { publish_id: string }
 }
 
+// Check the processing / publish status of a post by its publish_id.
+export async function checkPublishStatus(accessToken: string, publishId: string): Promise<{
+  status: string
+  fail_reason?: string
+  publicaly_available_post_id?: string[]
+}> {
+  const res = await fetch('https://open.tiktokapis.com/v2/post/publish/status/fetch/', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ publish_id: publishId }),
+  })
+  const data = await res.json()
+  if (!res.ok || data.error?.code !== 'ok') {
+    throw new Error(`TikTok status error: ${JSON.stringify(data.error ?? data)}`)
+  }
+  return data.data as { status: string; fail_reason?: string; publicaly_available_post_id?: string[] }
+}
+
 // Refresh an expired TikTok access token using the stored refresh token.
 export async function refreshTikTokToken(refreshToken: string): Promise<{
   access_token: string
