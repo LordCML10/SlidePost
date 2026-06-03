@@ -222,25 +222,32 @@ export default function LibraryPage() {
       const headers: Record<string, string> = {}
       if (token) headers['Authorization'] = `Bearer ${token}`
 
-      for (let i = 0; i < files.length; i += 10) {
-        const fd = new FormData()
-        files.slice(i, i + 10).forEach(f => fd.append('images', f))
-        const res = await fetch('/api/upload', { method: 'POST', body: fd, headers })
+      // Upload one file per request (Vercel's 4.5 MB function body limit means
+      // batching multiple files into one request causes 413 errors).
+      // Run all uploads in parallel so multi-file imports are still fast.
+      const results = await Promise.all(
+        files.map(async (file) => {
+          const fd = new FormData()
+          fd.append('images', file)
+          const res = await fetch('/api/upload', { method: 'POST', body: fd, headers })
 
-        // Read body as text first so we can handle non-JSON responses gracefully
-        const text = await res.text()
-        let json: Record<string, unknown> = {}
-        try { json = JSON.parse(text) } catch {
-          throw new Error(`Server error (${res.status}) — check Vercel logs`)
-        }
+          // Read body as text first so non-JSON responses give a real error message
+          const text = await res.text()
+          let json: Record<string, unknown> = {}
+          try { json = JSON.parse(text) } catch {
+            throw new Error(`Server error (${res.status}) — check Vercel logs`)
+          }
 
-        if (!res.ok) throw new Error(String(json.error ?? `Upload failed (${res.status})`))
+          if (!res.ok) throw new Error(String(json.error ?? `Upload failed (${res.status})`))
 
-        // Immediately prepend returned images so they appear without waiting for a refetch
-        const newImages: ImageWithProxy[] = (json.data as Record<string, unknown>)?.images as ImageWithProxy[] ?? []
-        if (newImages.length > 0) {
-          setImages(prev => [...newImages, ...prev])
-        }
+          return (json.data as Record<string, unknown>)?.images as ImageWithProxy[] ?? []
+        })
+      )
+
+      // Prepend all returned images at once so they appear without waiting for a refetch
+      const newImages = results.flat()
+      if (newImages.length > 0) {
+        setImages(prev => [...newImages, ...prev])
       }
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Upload failed')

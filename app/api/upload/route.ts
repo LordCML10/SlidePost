@@ -5,8 +5,10 @@ import { supabaseAdmin } from '@/lib/supabase'
 export const dynamic = 'force-dynamic'
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024 // 5MB
-const MAX_PHOTOS = 10 // per batch — frontend batches larger imports
+// Vercel serverless functions have a 4.5 MB request body limit.
+// Keep each file well under that — the client sends one file per request.
+const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024 // 4 MB
+const MAX_PHOTOS = 1 // one file per request; client loops for multi-file imports
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://slide-post.vercel.app'
 
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest) {
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json(
-        { error: 'Each image must be under 5MB' },
+        { error: 'Each image must be under 4 MB' },
         { status: 400 }
       )
     }
