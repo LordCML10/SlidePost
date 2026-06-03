@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@clerk/nextjs'
 import type { ImageWithProxy, Tag } from '@/lib/types'
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
@@ -155,6 +156,7 @@ function Modal({
 
 export default function LibraryPage() {
   const router = useRouter()
+  const { getToken } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [tags, setTags] = useState<Tag[]>([])
@@ -213,14 +215,29 @@ export default function LibraryPage() {
     setImporting(true)
     setImportError(null)
     try {
+      // Get a fresh Clerk session token and send it as a Bearer header.
+      // Clerk's middleware can redirect POST requests during session rotation,
+      // which loses the FormData body and returns HTML. Explicit token avoids that.
+      const token = await getToken()
+      const headers: Record<string, string> = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+
       for (let i = 0; i < files.length; i += 10) {
         const fd = new FormData()
         files.slice(i, i + 10).forEach(f => fd.append('images', f))
-        const res = await fetch('/api/upload', { method: 'POST', body: fd })
-        const json = await res.json()
-        if (!res.ok) throw new Error(json.error ?? 'Upload failed')
+        const res = await fetch('/api/upload', { method: 'POST', body: fd, headers })
+
+        // Read body as text first so we can handle non-JSON responses gracefully
+        const text = await res.text()
+        let json: Record<string, unknown> = {}
+        try { json = JSON.parse(text) } catch {
+          throw new Error(`Server error (${res.status}) — check Vercel logs`)
+        }
+
+        if (!res.ok) throw new Error(String(json.error ?? `Upload failed (${res.status})`))
+
         // Immediately prepend returned images so they appear without waiting for a refetch
-        const newImages: ImageWithProxy[] = json.data?.images ?? []
+        const newImages: ImageWithProxy[] = (json.data as Record<string, unknown>)?.images as ImageWithProxy[] ?? []
         if (newImages.length > 0) {
           setImages(prev => [...newImages, ...prev])
         }

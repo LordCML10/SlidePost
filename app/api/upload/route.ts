@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { supabaseAdmin } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
@@ -10,6 +11,12 @@ const MAX_PHOTOS = 10 // per batch — frontend batches larger imports
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://slide-post.vercel.app'
 
 export async function POST(req: NextRequest) {
+  // Verify Clerk session inside the handler — middleware redirect loses FormData
+  // for POST requests, so we guard here and return JSON on failure instead.
+  const { userId } = await auth()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   let formData: FormData
   try {
     formData = await req.formData()
