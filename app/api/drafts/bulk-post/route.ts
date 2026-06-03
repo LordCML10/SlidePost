@@ -7,6 +7,8 @@ import type { BulkPostResult } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://slide-post.vercel.app'
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -74,11 +76,12 @@ export async function POST(req: NextRequest) {
         .map((id) => imageMap.get(id))
         .filter(Boolean) as { id: string; public_url: string }[]
 
-      // Use direct Supabase Storage URLs — TikTok's servers fetch these directly
-      // and the public_url is already accessible without authentication.
-      // Proxy URLs (/api/image?src=...) add an unnecessary hop and can time out
-      // before TikTok finishes downloading.
-      const imageUrls = orderedImages.map((img) => img.public_url)
+      // TikTok's PULL_FROM_URL requires URLs from a domain you've verified in the
+      // TikTok Developer Portal. Route through our proxy so all image URLs come
+      // from the app's own domain (which you verify once, not Supabase's domain).
+      const imageUrls = orderedImages.map((img) =>
+        `${appUrl}/api/image?src=${encodeURIComponent(img.public_url)}`
+      )
 
       let hashtags: string[] = []
       if (draft.hashtag_set_id) {
