@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.error(`[/api/drafts/bulk-post] Draft ${draftId} failed:`, message)
-      results.push({ draftId, success: false, error: 'Something went wrong' })
+      results.push({ draftId, success: false, error: message })
     }
 
     // 2s buffer between posts — TikTok rate limit safety

@@ -67,12 +67,15 @@ export async function deleteTikTokAccount(id: string, userId: string): Promise<v
 export async function getDecryptedToken(accountId: string, userId: string): Promise<string> {
   const { data, error } = await supabaseAdmin
     .from('tiktok_accounts')
-    .select('encrypted_access_token')
+    .select('encrypted_access_token, expires_at')
     .eq('id', accountId)
     .eq('user_id', userId) // ownership check
     .maybeSingle()
 
-  if (error || !data) throw new Error('TikTok account not found or not authorized')
+  if (error || !data) throw new Error('TikTok account not found — please reconnect it from the nav.')
+  if (data.expires_at && new Date(data.expires_at) < new Date()) {
+    throw new Error('TikTok access token expired — disconnect and reconnect your account from the nav.')
+  }
   return decryptToken(data.encrypted_access_token)
 }
 
