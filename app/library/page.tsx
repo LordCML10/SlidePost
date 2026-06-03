@@ -215,39 +215,49 @@ export default function LibraryPage() {
     setImporting(true)
     setImportError(null)
     try {
-      // Get a fresh Clerk session token and send it as a Bearer header.
-      // Clerk's middleware can redirect POST requests during session rotation,
-      // which loses the FormData body and returns HTML. Explicit token avoids that.
       const token = await getToken()
-      const headers: Record<string, string> = {}
-      if (token) headers['Authorization'] = `Bearer ${token}`
+      const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (token) authHeaders['Authorization'] = `Bearer ${token}`
 
-      // Upload one file per request (Vercel's 4.5 MB function body limit means
-      // batching multiple files into one request causes 413 errors).
-      // Run all uploads in parallel so multi-file imports are still fast.
-      const results = await Promise.all(
+      // Direct-to-Supabase upload — file bytes never pass through Vercel,
+      // so there's no 4.5 MB function body limit:
+      //   1. Get a signed upload URL from our API (sends only filename/type/size)
+      //   2. PUT the file straight to Supabase Storage using that URL
+      //   3. Tell our API to register the image in the DB (sends only metadata)
+      const uploaded = await Promise.all(
         files.map(async (file) => {
-          const fd = new FormData()
-          fd.append('images', file)
-          const res = await fetch('/api/upload', { method: 'POST', body: fd, headers })
+          // Step 1 — generate signed URL
+          const prepRes = await fetch('/api/upload/signed-url', {
+            method: 'POST',
+            headers: authHeaders,
+            body: JSON.stringify({ filename: file.name, contentType: file.type, size: file.size }),
+          })
+          const prep = await prepRes.json()
+          if (!prepRes.ok) throw new Error(prep.error ?? 'Failed to prepare upload')
 
-          // Read body as text first so non-JSON responses give a real error message
-          const text = await res.text()
-          let json: Record<string, unknown> = {}
-          try { json = JSON.parse(text) } catch {
-            throw new Error(`Server error (${res.status}) — check Vercel logs`)
-          }
+          // Step 2 — upload directly to Supabase (bypasses Vercel entirely)
+          const storageRes = await fetch(prep.signedUrl as string, {
+            method: 'PUT',
+            headers: { 'Content-Type': file.type },
+            body: file,
+          })
+          if (!storageRes.ok) throw new Error(`Storage upload failed (${storageRes.status})`)
 
-          if (!res.ok) throw new Error(String(json.error ?? `Upload failed (${res.status})`))
+          // Step 3 — register metadata in DB
+          const completeRes = await fetch('/api/upload/complete', {
+            method: 'POST',
+            headers: authHeaders,
+            body: JSON.stringify({ filename: file.name, storagePath: prep.storagePath, publicUrl: prep.publicUrl }),
+          })
+          const complete = await completeRes.json()
+          if (!completeRes.ok) throw new Error(complete.error ?? 'Failed to save image')
 
-          return (json.data as Record<string, unknown>)?.images as ImageWithProxy[] ?? []
+          return complete.data as ImageWithProxy
         })
       )
 
-      // Prepend all returned images at once so they appear without waiting for a refetch
-      const newImages = results.flat()
-      if (newImages.length > 0) {
-        setImages(prev => [...newImages, ...prev])
+      if (uploaded.length > 0) {
+        setImages(prev => [...uploaded, ...prev])
       }
     } catch (err) {
       setImportError(err instanceof Error ? err.message : 'Upload failed')
