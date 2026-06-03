@@ -39,8 +39,9 @@ export async function POST(req: NextRequest) {
   let token: string
   try {
     token = await getDecryptedToken(activeAccountId, userId)
-  } catch {
-    return NextResponse.json({ error: 'TikTok account not found or not authorized' }, { status: 401 })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'TikTok account not found or not authorized'
+    return NextResponse.json({ error: message }, { status: 401 })
   }
 
   const results: BulkPostResult[] = []

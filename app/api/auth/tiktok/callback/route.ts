@@ -56,6 +56,7 @@ export async function GET(req: NextRequest) {
       userId,
       openId: tokens.open_id,
       accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
       displayName: userInfo.display_name,
       avatarUrl: userInfo.avatar_url,
       expiresIn: tokens.expires_in,

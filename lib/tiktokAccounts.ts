@@ -6,6 +6,7 @@
 
 import { supabaseAdmin } from './supabase'
 import { encryptToken, decryptToken } from './tokenCrypto'
+import { refreshTikTokToken } from './tiktok'
 import type { TikTokAccount } from './types'
 
 // ── Save (upsert) a TikTok account for a Clerk user ──────────────────────────
@@ -13,6 +14,7 @@ export async function saveTikTokAccount(params: {
   userId: string
   openId: string
   accessToken: string
+  refreshToken?: string   // optional — stored separately, best-effort (column may not exist yet)
   displayName: string | null
   avatarUrl: string | null
   expiresIn: number
@@ -37,6 +39,17 @@ export async function saveTikTokAccount(params: {
     .maybeSingle()
 
   if (error || !data) throw new Error(error?.message ?? 'Failed to save TikTok account')
+
+  // Store refresh token separately — best-effort so it doesn't break if the
+  // encrypted_refresh_token column hasn't been added to the table yet.
+  if (params.refreshToken && data.id) {
+    await supabaseAdmin
+      .from('tiktok_accounts')
+      .update({ encrypted_refresh_token: encryptToken(params.refreshToken) })
+      .eq('id', data.id)
+    // Intentionally not checking error — column may not exist yet on old schemas
+  }
+
   return data as TikTokAccount
 }
 
@@ -73,10 +86,42 @@ export async function getDecryptedToken(accountId: string, userId: string): Prom
     .maybeSingle()
 
   if (error || !data) throw new Error('TikTok account not found — please reconnect it from the nav.')
-  if (data.expires_at && new Date(data.expires_at) < new Date()) {
+
+  // Token still valid
+  if (!data.expires_at || new Date(data.expires_at) >= new Date()) {
+    return decryptToken(data.encrypted_access_token)
+  }
+
+  // Token expired — try auto-refresh using stored refresh token.
+  // The encrypted_refresh_token column is optional (requires DB migration).
+  const { data: refreshRow } = await supabaseAdmin
+    .from('tiktok_accounts')
+    .select('encrypted_refresh_token')
+    .eq('id', accountId)
+    .maybeSingle()
+
+  if (!refreshRow?.encrypted_refresh_token) {
     throw new Error('TikTok access token expired — disconnect and reconnect your account from the nav.')
   }
-  return decryptToken(data.encrypted_access_token)
+
+  // Refresh the access token automatically
+  const refreshToken = decryptToken(refreshRow.encrypted_refresh_token)
+  const newTokens = await refreshTikTokToken(refreshToken)
+
+  const newEncryptedAccess = encryptToken(newTokens.access_token)
+  const newEncryptedRefresh = encryptToken(newTokens.refresh_token)
+  const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000).toISOString()
+
+  await supabaseAdmin
+    .from('tiktok_accounts')
+    .update({
+      encrypted_access_token: newEncryptedAccess,
+      encrypted_refresh_token: newEncryptedRefresh,
+      expires_at: newExpiresAt,
+    })
+    .eq('id', accountId)
+
+  return newTokens.access_token
 }
 
 // ── Verify an account belongs to a user (lightweight check) ─────────────────

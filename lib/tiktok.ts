@@ -80,6 +80,31 @@ export async function postPhotoSlideshow({
   return data.data as { publish_id: string }
 }
 
+// Refresh an expired TikTok access token using the stored refresh token.
+export async function refreshTikTokToken(refreshToken: string): Promise<{
+  access_token: string
+  refresh_token: string
+  expires_in: number
+  refresh_expires_in: number
+}> {
+  const res = await fetch(TIKTOK_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_key: process.env.TIKTOK_CLIENT_KEY!,
+      client_secret: process.env.TIKTOK_CLIENT_SECRET!,
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    }),
+  })
+
+  const data = await res.json()
+  if (!res.ok || data.error) {
+    throw new Error(data.error_description ?? 'Token refresh failed — please reconnect your TikTok account.')
+  }
+  return data
+}
+
 // Fetch TikTok display name and avatar (requires user.info.basic scope).
 // Returns nulls if the app doesn't have the scope or the call fails — non-fatal.
 export async function fetchTikTokUserInfo(
