@@ -26,13 +26,15 @@ export async function GET(req: NextRequest) {
     }
 
     const contentType = upstream.headers.get('content-type') ?? 'image/jpeg'
+    const contentLength = upstream.headers.get('content-length')
 
-    return new NextResponse(upstream.body, {
-      headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=3600',
-      },
-    })
+    const headers: Record<string, string> = {
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=3600',
+    }
+    if (contentLength) headers['Content-Length'] = contentLength
+
+    return new NextResponse(upstream.body, { headers })
   } catch {
     return new NextResponse('Proxy error', { status: 500 })
   }
