@@ -58,7 +58,7 @@ export async function postPhotoSlideshow({
         photo_cover_index: 0,
         photo_images: imageUrls,
       },
-      post_mode: 'DIRECT_POST',
+      post_mode: 'MEDIA_UPLOAD',
       media_type: 'PHOTO',
     }),
   })
