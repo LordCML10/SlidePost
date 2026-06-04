@@ -215,6 +215,35 @@ export default function LibraryPage() {
     setImporting(true)
     setImportError(null)
     try {
+      // Validate dimensions before uploading — TikTok rejects images outside
+      // 360px minimum (shorter side) and 4096px maximum (longer side).
+      const validFiles: File[] = []
+      const rejected: string[] = []
+      await Promise.all(files.map(file => new Promise<void>(resolve => {
+        const url = URL.createObjectURL(file)
+        const img = new Image()
+        img.onload = () => {
+          URL.revokeObjectURL(url)
+          const shorter = Math.min(img.width, img.height)
+          const longer = Math.max(img.width, img.height)
+          if (shorter < 360) {
+            rejected.push(`${file.name} (${img.width}×${img.height} — too small, min 360px)`)
+          } else if (longer > 4096) {
+            rejected.push(`${file.name} (${img.width}×${img.height} — too large, max 4096px)`)
+          } else {
+            validFiles.push(file)
+          }
+          resolve()
+        }
+        img.onerror = () => { URL.revokeObjectURL(url); validFiles.push(file); resolve() }
+        img.src = url
+      })))
+
+      if (rejected.length > 0) {
+        setImportError(`${rejected.length} image${rejected.length !== 1 ? 's' : ''} skipped (won't post to TikTok): ${rejected.join(', ')}`)
+      }
+      if (validFiles.length === 0) return
+
       const token = await getToken()
       const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
       if (token) authHeaders['Authorization'] = `Bearer ${token}`
@@ -225,7 +254,7 @@ export default function LibraryPage() {
       //   2. PUT the file straight to Supabase Storage using that URL
       //   3. Tell our API to register the image in the DB (sends only metadata)
       const uploaded = await Promise.all(
-        files.map(async (file) => {
+        validFiles.map(async (file) => {
           // Step 1 — generate signed URL
           const prepRes = await fetch('/api/upload/signed-url', {
             method: 'POST',
@@ -435,20 +464,30 @@ export default function LibraryPage() {
             + New Tag
           </button>
         )}
-        {selectedCount > 0 && (
+        {visibleImages.length > 0 && (
           <div className="ml-auto flex items-center gap-3">
             <button
-              onClick={deleteSelected}
-              className="text-xs text-red-400 hover:text-red-300 transition-colors"
-            >
-              Delete ({selectedCount})
-            </button>
-            <button
-              onClick={() => setSelectedIds(new Set())}
+              onClick={() => setSelectedIds(new Set(visibleImages.map(img => img.id)))}
               className="text-xs text-gray-500 hover:text-white transition-colors"
             >
-              Clear
+              Select All
             </button>
+            {selectedCount > 0 && (
+              <>
+                <button
+                  onClick={deleteSelected}
+                  className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                >
+                  Delete ({selectedCount})
+                </button>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  className="text-xs text-gray-500 hover:text-white transition-colors"
+                >
+                  Clear
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
