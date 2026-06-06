@@ -245,8 +245,8 @@ export default function LibraryPage() {
     setImportError(null)
     try {
       // Validate and normalise images before uploading.
-      // - Always re-encode through canvas to strip ICC color profiles (TikTok
-      //   PULL_FROM_URL rejects images with embedded ICC profiles).
+      // - Strip ICC profiles (TikTok PULL_FROM_URL rejects them).
+      // - Center-crop to TikTok's allowed aspect ratio range (9:16 – 3:4).
       // - Upscale to 720px shorter side if needed.
       // - Reject if longer side > 4096px.
       const validFiles: File[] = []
@@ -265,15 +265,32 @@ export default function LibraryPage() {
             return
           }
 
-          // Always re-encode through canvas to strip embedded ICC color profiles.
-          // TikTok's PULL_FROM_URL validator rejects images with ICC_PROFILE metadata
-          // (returning picture_size_check_failed). Canvas output is plain sRGB JPEG
-          // with no embedded profile. Also upscales if shorter side < 720px.
-          const scale = shorter < 720 ? 720 / shorter : 1
+          // Always re-encode through canvas to:
+          //  1. Strip ICC color profiles (TikTok PULL_FROM_URL rejects them)
+          //  2. Center-crop to fit TikTok's aspect ratio range (9:16 – 3:4)
+          //  3. Upscale if shorter side < 720px
+          const MIN_RATIO = 9 / 16  // 0.5625 — tallest allowed (most portrait)
+          const MAX_RATIO = 3 / 4   // 0.75   — widest allowed (least portrait)
+          const ratio = img.width / img.height
+
+          // Source crop region (default = full image)
+          let sx = 0, sy = 0, sw = img.width, sh = img.height
+          if (ratio < MIN_RATIO) {
+            // Too tall — crop height to match 9:16
+            sh = Math.round(img.width / MIN_RATIO)
+            sy = Math.round((img.height - sh) / 2)
+          } else if (ratio > MAX_RATIO) {
+            // Too wide — crop width to match 3:4
+            sw = Math.round(img.height * MAX_RATIO)
+            sx = Math.round((img.width - sw) / 2)
+          }
+
+          const croppedShorter = Math.min(sw, sh)
+          const scale = croppedShorter < 720 ? 720 / croppedShorter : 1
           const canvas = document.createElement('canvas')
-          canvas.width = Math.round(img.width * scale)
-          canvas.height = Math.round(img.height * scale)
-          canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+          canvas.width = Math.round(sw * scale)
+          canvas.height = Math.round(sh * scale)
+          canvas.getContext('2d')!.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
           canvas.toBlob(blob => {
             if (blob) {
               validFiles.push(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }))
