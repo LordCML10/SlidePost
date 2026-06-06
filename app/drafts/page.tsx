@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { BulkPostResult, Draft, ImageWithProxy, TikTokAccount } from '@/lib/types'
 
+type PostResult = BulkPostResult & { tiktokStatus?: string; failReason?: string; checking?: boolean }
+
 // ─── Draft card ───────────────────────────────────────────────────────────────
 
 function DraftCard({
@@ -43,7 +45,7 @@ function DraftCard({
         </button>
         {draft.posted && (
           <span className="absolute top-2 right-2 text-[10px] bg-green-600 text-white px-1.5 py-0.5 rounded">
-            Posted
+            Sent
           </span>
         )}
         <span className="absolute bottom-2 right-2 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">
@@ -89,7 +91,7 @@ export default function DraftsPage() {
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [posting, setPosting] = useState(false)
-  const [results, setResults] = useState<BulkPostResult[] | null>(null)
+  const [results, setResults] = useState<PostResult[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [activeAccount, setActiveAccount] = useState<TikTokAccount | null>(null)
 
@@ -156,9 +158,31 @@ export default function DraftsPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      setResults(json.data)
+      const data: PostResult[] = (json.data ?? []).map((r: BulkPostResult) => ({
+        ...r,
+        checking: r.success && !!r.publish_id,
+      }))
+      setResults(data)
       await load()
       setSelectedIds(new Set())
+
+      // Wait 4s for TikTok to process, then check actual status for each draft
+      const toCheck = data.filter(r => r.success && r.publish_id)
+      if (toCheck.length > 0) {
+        await new Promise(resolve => setTimeout(resolve, 4000))
+        const updated = await Promise.all(
+          data.map(async r => {
+            if (!r.success || !r.publish_id) return r
+            try {
+              const s = await fetch(`/api/posts/status?publish_id=${r.publish_id}`).then(x => x.json())
+              return { ...r, checking: false, tiktokStatus: s.data?.status, failReason: s.data?.fail_reason }
+            } catch {
+              return { ...r, checking: false }
+            }
+          })
+        )
+        setResults(updated)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Posting failed')
     } finally {
@@ -209,16 +233,25 @@ export default function DraftsPage() {
         <div className="mx-6 mt-4 p-4 bg-gray-900 rounded-xl border border-gray-800">
           <p className="text-sm font-medium mb-3">Results:</p>
           <div className="space-y-1.5">
-            {results.map(r => (
-              <div key={r.draftId} className="flex items-center gap-2 text-sm">
-                <span className={r.success ? 'text-green-400' : 'text-red-400'}>
-                  {r.success ? '✓' : '✗'}
-                </span>
-                <span className="text-gray-400">
-                  {r.success ? `Posted — ID: ${r.publish_id}` : r.error}
-                </span>
-              </div>
-            ))}
+            {results.map(r => {
+              const failed = r.tiktokStatus === 'FAILED'
+              const sent = r.tiktokStatus === 'PUBLISHED_PUBLIC' || r.tiktokStatus === 'PUBLISHED_PRIVATE' || r.tiktokStatus === 'IN_REVIEW'
+              const icon = !r.success ? '✗' : r.checking ? '…' : failed ? '✗' : '✓'
+              const color = !r.success || failed ? 'text-red-400' : r.checking ? 'text-yellow-400' : 'text-green-400'
+              let msg = ''
+              if (!r.success) msg = r.error ?? 'Failed'
+              else if (r.checking) msg = 'Sent — checking TikTok status...'
+              else if (failed) msg = `Did not go through — ${r.failReason ?? 'TikTok rejected it'}`
+              else if (sent) msg = 'Sent to inbox ✓'
+              else if (r.tiktokStatus) msg = `Sent — status: ${r.tiktokStatus}`
+              else msg = 'Sent'
+              return (
+                <div key={r.draftId} className="flex items-center gap-2 text-sm">
+                  <span className={color}>{icon}</span>
+                  <span className="text-gray-400">{msg}</span>
+                </div>
+              )
+            })}
           </div>
           <button onClick={() => setResults(null)} className="mt-3 text-xs text-gray-500 hover:text-white">
             Dismiss
