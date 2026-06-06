@@ -264,10 +264,12 @@ export default function LibraryPage() {
             return
           }
 
-          // Always re-encode through canvas to strip ICC color profiles.
-          // TikTok's PULL_FROM_URL validator rejects images with ICC_PROFILE metadata.
-          // Canvas output is plain sRGB JPEG with no embedded profile.
-          // Also upscales if shorter side < 720px.
+          // Always re-encode through canvas. This strips ICC profiles/EXIF and,
+          // critically, forces 4:2:0 chroma subsampling: TikTok's PULL_FROM_URL
+          // pipeline rejects 4:4:4 (non-subsampled) JPEGs with the misleading
+          // picture_size_check_failed error. Chromium's canvas.toBlob emits 4:4:4
+          // at high quality (>= ~0.90) and 4:2:0 at lower quality, so we encode at
+          // 0.8 to guarantee 4:2:0. Also upscales if shorter side < 720px.
           const scale = shorter < 720 ? 720 / shorter : 1
           const canvas = document.createElement('canvas')
           canvas.width = Math.round(img.width * scale)
@@ -280,7 +282,7 @@ export default function LibraryPage() {
               validFiles.push(file)
             }
             resolve()
-          }, 'image/jpeg', 0.95)
+          }, 'image/jpeg', 0.8)
           return
         }
         img.onerror = () => { URL.revokeObjectURL(url); validFiles.push(file); resolve() }
