@@ -244,12 +244,8 @@ export default function LibraryPage() {
     setImporting(true)
     setImportError(null)
     try {
-      // Validate dimensions and normalize orientation before uploading.
-      // TikTok's PULL_FROM_URL reads raw pixel dimensions without applying
-      // EXIF rotation — a portrait photo shot in landscape mode looks landscape
-      // to TikTok's puller and fails picture_size_check. Drawing to canvas
-      // physically rotates pixels and strips EXIF so stored files always match
-      // what you see. Re-encodes at 95% JPEG — visually identical to original.
+      // Validate dimensions before uploading — TikTok rejects images outside
+      // 360px minimum (shorter side) and 4096px maximum (longer side).
       const validFiles: File[] = []
       const rejected: string[] = []
       await Promise.all(files.map(file => new Promise<void>(resolve => {
@@ -257,33 +253,16 @@ export default function LibraryPage() {
         const img = new Image()
         img.onload = () => {
           URL.revokeObjectURL(url)
-          // img.width/height reflect EXIF-corrected display dimensions
           const shorter = Math.min(img.width, img.height)
           const longer = Math.max(img.width, img.height)
           if (shorter < 360) {
             rejected.push(`${file.name} (${img.width}×${img.height} — too small, min 360px)`)
-            resolve()
-            return
-          }
-          if (longer > 4096) {
+          } else if (longer > 4096) {
             rejected.push(`${file.name} (${img.width}×${img.height} — too large, max 4096px)`)
-            resolve()
-            return
+          } else {
+            validFiles.push(file)
           }
-          // Draw to canvas — browser applies EXIF rotation, canvas output has
-          // physically correct pixels and no rotation metadata
-          const canvas = document.createElement('canvas')
-          canvas.width = img.width
-          canvas.height = img.height
-          canvas.getContext('2d')!.drawImage(img, 0, 0)
-          canvas.toBlob(blob => {
-            if (blob) {
-              validFiles.push(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }))
-            } else {
-              validFiles.push(file) // fallback to original if canvas fails
-            }
-            resolve()
-          }, 'image/jpeg', 0.95)
+          resolve()
         }
         img.onerror = () => { URL.revokeObjectURL(url); validFiles.push(file); resolve() }
         img.src = url
