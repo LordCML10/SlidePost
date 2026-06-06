@@ -244,34 +244,23 @@ export default function LibraryPage() {
     setImporting(true)
     setImportError(null)
     try {
-      // Validate and normalise images before uploading.
-      // - Strip ICC profiles via canvas re-encode (TikTok PULL_FROM_URL rejects them).
-      // - Upscale to 720px shorter side if needed.
-      // - Reject if longer side > 4096px.
+      // Normalise every image through a canvas re-encode so it always meets
+      // TikTok's PULL_FROM_URL requirements (all otherwise fail with the
+      // misleading picture_size_check_failed):
+      //  1. 4:2:0 chroma subsampling — TikTok rejects 4:4:4 JPEGs. Chromium's
+      //     canvas.toBlob emits 4:4:4 at quality >= ~0.90, 4:2:0 below, so we
+      //     encode at 0.8 to guarantee 4:2:0.
+      //  2. Aspect ratio within 9:16 (0.5625) to 3:4 (0.75). Center-crop images
+      //     outside that range.
+      //  3. Shorter side >= 720px (upscale undersized images).
+      // The re-encode also strips ICC profiles/EXIF. Nothing is ever rejected.
       const validFiles: File[] = []
-      const rejected: string[] = []
       await Promise.all(files.map(file => new Promise<void>(resolve => {
         const url = URL.createObjectURL(file)
         const img = new Image()
         img.onload = () => {
           URL.revokeObjectURL(url)
-          const shorter = Math.min(img.width, img.height)
-          const longer = Math.max(img.width, img.height)
 
-          if (longer > 4096) {
-            rejected.push(`${file.name} (${img.width}×${img.height} — too large, max 4096px)`)
-            resolve()
-            return
-          }
-
-          // Always re-encode through canvas. Two TikTok PULL_FROM_URL requirements,
-          // both of which otherwise fail with the misleading picture_size_check_failed:
-          //  1. 4:2:0 chroma subsampling — TikTok rejects 4:4:4 JPEGs. Chromium's
-          //     canvas.toBlob emits 4:4:4 at quality >= ~0.90, 4:2:0 below, so we
-          //     encode at 0.8 to guarantee 4:2:0.
-          //  2. Aspect ratio within 9:16 (0.5625) to 3:4 (0.75). Center-crop images
-          //     outside that range.
-          // Canvas re-encode also strips ICC profiles/EXIF. Upscales if shorter < 720px.
           const MIN_RATIO = 9 / 16  // 0.5625 — tallest allowed
           const MAX_RATIO = 3 / 4   // 0.75   — widest allowed
           const ratio = img.width / img.height
@@ -287,6 +276,8 @@ export default function LibraryPage() {
             sx = Math.round((img.width - sw) / 2)
           }
 
+          // Upscale so shorter side >= 720px (no downscale cap — TikTok accepts
+          // large images; none of the observed failures were size-related)
           const croppedShorter = Math.min(sw, sh)
           const scale = croppedShorter < 720 ? 720 / croppedShorter : 1
           const canvas = document.createElement('canvas')
@@ -307,9 +298,6 @@ export default function LibraryPage() {
         img.src = url
       })))
 
-      if (rejected.length > 0) {
-        setImportError(`${rejected.length} image${rejected.length !== 1 ? 's' : ''} skipped (won't post to TikTok): ${rejected.join(', ')}`)
-      }
       if (validFiles.length === 0) return
 
       const token = await getToken()
