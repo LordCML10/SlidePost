@@ -244,8 +244,10 @@ export default function LibraryPage() {
     setImporting(true)
     setImportError(null)
     try {
-      // Validate dimensions before uploading — TikTok rejects images outside
-      // 360px minimum (shorter side) and 4096px maximum (longer side).
+      // Validate and fix dimensions before uploading.
+      // TikTok requires minimum 720px on the shorter side and max 4096px on the longer side.
+      // Images below 720px are upscaled to exactly 720px on the shorter side.
+      // Images above 4096px are rejected (too large to fix without significant quality loss).
       const validFiles: File[] = []
       const rejected: string[] = []
       await Promise.all(files.map(file => new Promise<void>(resolve => {
@@ -255,13 +257,33 @@ export default function LibraryPage() {
           URL.revokeObjectURL(url)
           const shorter = Math.min(img.width, img.height)
           const longer = Math.max(img.width, img.height)
-          if (shorter < 360) {
-            rejected.push(`${file.name} (${img.width}×${img.height} — too small, min 360px)`)
-          } else if (longer > 4096) {
+
+          if (longer > 4096) {
             rejected.push(`${file.name} (${img.width}×${img.height} — too large, max 4096px)`)
-          } else {
-            validFiles.push(file)
+            resolve()
+            return
           }
+
+          if (shorter < 720) {
+            // Upscale so shorter side hits 720px
+            const scale = 720 / shorter
+            const canvas = document.createElement('canvas')
+            canvas.width = Math.round(img.width * scale)
+            canvas.height = Math.round(img.height * scale)
+            canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+            canvas.toBlob(blob => {
+              if (blob) {
+                validFiles.push(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }))
+              } else {
+                validFiles.push(file)
+              }
+              resolve()
+            }, 'image/jpeg', 0.95)
+            return
+          }
+
+          // Already within TikTok's acceptable range — upload as-is
+          validFiles.push(file)
           resolve()
         }
         img.onerror = () => { URL.revokeObjectURL(url); validFiles.push(file); resolve() }
