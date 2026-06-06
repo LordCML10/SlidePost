@@ -8,12 +8,14 @@ import type { ImageWithProxy, Tag } from '@/lib/types'
 // ─── Sub-components ─────────────────────────────────────────────────────────
 
 function Thumb({
-  image, selected, onToggle, onOpen,
+  image, selected, landscape, onToggle, onOpen, onLandscape,
 }: {
   image: ImageWithProxy
   selected: boolean
+  landscape: boolean
   onToggle: () => void
   onOpen: () => void
+  onLandscape: () => void
 }) {
   return (
     <div
@@ -22,7 +24,15 @@ function Thumb({
         selected ? 'ring-2 ring-violet-500 ring-offset-1 ring-offset-gray-950' : ''
       }`}
     >
-      <img src={image.proxy_url} alt={image.filename} className="w-full h-full object-cover" />
+      <img
+        src={image.proxy_url}
+        alt={image.filename}
+        className="w-full h-full object-cover"
+        onLoad={e => {
+          const el = e.currentTarget
+          if (el.naturalWidth > el.naturalHeight) onLandscape()
+        }}
+      />
       <div className={`absolute inset-0 bg-black transition-opacity ${
         selected ? 'bg-opacity-20' : 'bg-opacity-0 group-hover:bg-opacity-30'
       }`} />
@@ -40,17 +50,24 @@ function Thumb({
           </svg>
         )}
       </button>
+      {landscape && (
+        <span className="absolute bottom-1 right-1 text-[9px] bg-yellow-500/90 text-black font-semibold px-1 rounded leading-4">
+          ↔
+        </span>
+      )}
     </div>
   )
 }
 
 function ImageGrid({
-  images, selectedIds, onToggle, onOpen,
+  images, selectedIds, landscapeIds, onToggle, onOpen, onLandscape,
 }: {
   images: ImageWithProxy[]
   selectedIds: Set<string>
+  landscapeIds: Set<string>
   onToggle: (id: string) => void
   onOpen: (img: ImageWithProxy) => void
+  onLandscape: (id: string) => void
 }) {
   return (
     <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9 gap-1.5">
@@ -59,8 +76,10 @@ function ImageGrid({
           key={img.id}
           image={img}
           selected={selectedIds.has(img.id)}
+          landscape={landscapeIds.has(img.id)}
           onToggle={() => onToggle(img.id)}
           onOpen={() => onOpen(img)}
+          onLandscape={() => onLandscape(img.id)}
         />
       ))}
     </div>
@@ -164,12 +183,22 @@ export default function LibraryPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [landscapeIds, setLandscapeIds] = useState<Set<string>>(new Set())
   const [modalImage, setModalImage] = useState<ImageWithProxy | null>(null)
   const [importing, setImporting] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const [showNewTag, setShowNewTag] = useState(false)
   const [newTagName, setNewTagName] = useState('')
   const [creatingTag, setCreatingTag] = useState(false)
+
+  const markLandscape = useCallback((id: string) => {
+    setLandscapeIds(prev => {
+      if (prev.has(id)) return prev
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+  }, [])
 
   // silent=true: refresh without showing the loading spinner (used after upload)
   const load = useCallback(async (silent = false) => {
@@ -511,12 +540,12 @@ export default function LibraryPage() {
             <div className="space-y-8">
               {untaggedImages.length > 0 && (
                 <Section title="Untagged" count={untaggedImages.length}>
-                  <ImageGrid images={untaggedImages} selectedIds={selectedIds} onToggle={toggleSelect} onOpen={setModalImage} />
+                  <ImageGrid images={untaggedImages} selectedIds={selectedIds} landscapeIds={landscapeIds} onToggle={toggleSelect} onOpen={setModalImage} onLandscape={markLandscape} />
                 </Section>
               )}
               {taggedSections.map(({ tag, images: tagImgs }) => (
                 <Section key={tag.id} title={tag.name} count={tagImgs.length}>
-                  <ImageGrid images={tagImgs} selectedIds={selectedIds} onToggle={toggleSelect} onOpen={setModalImage} />
+                  <ImageGrid images={tagImgs} selectedIds={selectedIds} landscapeIds={landscapeIds} onToggle={toggleSelect} onOpen={setModalImage} onLandscape={markLandscape} />
                 </Section>
               ))}
             </div>
@@ -524,7 +553,7 @@ export default function LibraryPage() {
         ) : visibleImages.length === 0 ? (
           <p className="text-gray-600 text-sm py-12">No images in this section.</p>
         ) : (
-          <ImageGrid images={visibleImages} selectedIds={selectedIds} onToggle={toggleSelect} onOpen={setModalImage} />
+          <ImageGrid images={visibleImages} selectedIds={selectedIds} landscapeIds={landscapeIds} onToggle={toggleSelect} onOpen={setModalImage} onLandscape={markLandscape} />
         )}
       </div>
 
