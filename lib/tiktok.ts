@@ -95,6 +95,7 @@ export async function checkPublishStatus(accessToken: string, publishId: string)
     body: JSON.stringify({ publish_id: publishId }),
   })
   const data = await res.json()
+  console.log('[checkPublishStatus]', publishId, JSON.stringify(data))
   if (!res.ok || data.error?.code !== 'ok') {
     throw new Error(`TikTok status error: ${JSON.stringify(data.error ?? data)}`)
   }

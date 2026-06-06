@@ -20,11 +20,17 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    console.log('[/api/image] fetching:', src)
     const upstream = await fetch(src)
 
     if (!upstream.ok) {
+      console.log('[/api/image] upstream failed:', upstream.status, src)
       return new NextResponse('Failed to fetch image', { status: 502 })
     }
+    console.log('[/api/image] ok ct=%s cl=%s src=%s',
+      upstream.headers.get('content-type'),
+      upstream.headers.get('content-length'),
+      src)
 
     const contentType = upstream.headers.get('content-type') ?? 'image/jpeg'
     const contentLength = upstream.headers.get('content-length')
