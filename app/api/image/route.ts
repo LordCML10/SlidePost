@@ -27,20 +27,15 @@ export async function GET(req: NextRequest) {
     }
 
     const contentType = upstream.headers.get('content-type') ?? 'image/jpeg'
+    const contentLength = upstream.headers.get('content-length')
 
-    // Buffer the full image before responding — forces a proper Content-Length
-    // header with no chunked transfer encoding. TikTok's PULL_FROM_URL fetcher
-    // may not handle chunked responses correctly, causing incomplete reads that
-    // fail the picture_size_check.
-    const buffer = await upstream.arrayBuffer()
+    const headers: Record<string, string> = {
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=3600',
+    }
+    if (contentLength) headers['Content-Length'] = contentLength
 
-    return new NextResponse(buffer, {
-      headers: {
-        'Content-Type': contentType,
-        'Content-Length': String(buffer.byteLength),
-        'Cache-Control': 'public, max-age=3600',
-      },
-    })
+    return new NextResponse(upstream.body, { headers })
   } catch {
     return new NextResponse('Proxy error', { status: 500 })
   }
