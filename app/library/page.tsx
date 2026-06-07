@@ -261,19 +261,24 @@ export default function LibraryPage() {
         img.onload = () => {
           URL.revokeObjectURL(url)
 
+          // TikTok's check is strict at the exact bounds, so target a hair
+          // INSIDE them (EPS) and floor the cropped side — otherwise rounding
+          // can land the final ratio a fraction outside (e.g. 0.7503 or 0.5624)
+          // and the post fails with picture_size_check_failed.
           const MIN_RATIO = 9 / 16  // 0.5625 — tallest allowed
           const MAX_RATIO = 3 / 4   // 0.75   — widest allowed
+          const EPS = 0.001         // safety margin to absorb sub-pixel rounding
           const ratio = img.width / img.height
 
           let sx = 0, sy = 0, sw = img.width, sh = img.height
           if (ratio < MIN_RATIO) {
-            // Too tall — crop height to match 9:16
-            sh = Math.round(img.width / MIN_RATIO)
-            sy = Math.round((img.height - sh) / 2)
+            // Too tall — crop height to just inside 9:16 (floor keeps ratio >= MIN)
+            sh = Math.floor(img.width / (MIN_RATIO + EPS))
+            sy = Math.floor((img.height - sh) / 2)
           } else if (ratio > MAX_RATIO) {
-            // Too wide — crop width to match 3:4
-            sw = Math.round(img.height * MAX_RATIO)
-            sx = Math.round((img.width - sw) / 2)
+            // Too wide — crop width to just inside 3:4 (floor keeps ratio <= MAX)
+            sw = Math.floor(img.height * (MAX_RATIO - EPS))
+            sx = Math.floor((img.width - sw) / 2)
           }
 
           // Upscale so shorter side >= 720px (no downscale cap — TikTok accepts
