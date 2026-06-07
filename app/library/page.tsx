@@ -244,16 +244,16 @@ export default function LibraryPage() {
     setImporting(true)
     setImportError(null)
     try {
-      // Normalise every image through a canvas re-encode so it always meets
-      // TikTok's PULL_FROM_URL requirements (all otherwise fail with the
-      // misleading picture_size_check_failed):
-      //  1. 4:2:0 chroma subsampling — TikTok rejects 4:4:4 JPEGs. Chromium's
-      //     canvas.toBlob emits 4:4:4 at quality >= ~0.90, 4:2:0 below, so we
-      //     encode at 0.8 to guarantee 4:2:0.
-      //  2. Aspect ratio within 9:16 (0.5625) to 3:4 (0.75). Center-crop images
-      //     outside that range.
-      //  3. Shorter side >= 720px (upscale undersized images).
-      // The re-encode also strips ICC profiles/EXIF. Nothing is ever rejected.
+      // Normalise EVERY image to an identical 1080×1920 (9:16) JPEG via canvas.
+      // TikTok's PULL_FROM_URL fails (picture_size_check_failed) on slideshows
+      // that mix aspect ratios, and on 4:4:4 / ICC-tagged images. Forcing one
+      // fixed output size sidesteps all of it: every image in every slideshow is
+      // byte-shape-identical (same dims, same 9:16 ratio), 4:2:0 (canvas at 0.8
+      // quality), and free of ICC/EXIF (canvas re-encode strips them).
+      // Cover-crop = scale to fill, center-crop the overflow.
+      const OUT_W = 1080
+      const OUT_H = 1920
+      const OUT_RATIO = OUT_W / OUT_H
       const validFiles: File[] = []
       await Promise.all(files.map(file => new Promise<void>(resolve => {
         const url = URL.createObjectURL(file)
@@ -261,34 +261,22 @@ export default function LibraryPage() {
         img.onload = () => {
           URL.revokeObjectURL(url)
 
-          // TikTok's check is strict at the exact bounds, so target a hair
-          // INSIDE them (EPS) and floor the cropped side — otherwise rounding
-          // can land the final ratio a fraction outside (e.g. 0.7503 or 0.5624)
-          // and the post fails with picture_size_check_failed.
-          const MIN_RATIO = 9 / 16  // 0.5625 — tallest allowed
-          const MAX_RATIO = 3 / 4   // 0.75   — widest allowed
-          const EPS = 0.001         // safety margin to absorb sub-pixel rounding
           const ratio = img.width / img.height
-
           let sx = 0, sy = 0, sw = img.width, sh = img.height
-          if (ratio < MIN_RATIO) {
-            // Too tall — crop height to just inside 9:16 (floor keeps ratio >= MIN)
-            sh = Math.floor(img.width / (MIN_RATIO + EPS))
-            sy = Math.floor((img.height - sh) / 2)
-          } else if (ratio > MAX_RATIO) {
-            // Too wide — crop width to just inside 3:4 (floor keeps ratio <= MAX)
-            sw = Math.floor(img.height * (MAX_RATIO - EPS))
-            sx = Math.floor((img.width - sw) / 2)
+          if (ratio > OUT_RATIO) {
+            // Source is wider than 9:16 — crop the sides
+            sw = Math.round(img.height * OUT_RATIO)
+            sx = Math.round((img.width - sw) / 2)
+          } else if (ratio < OUT_RATIO) {
+            // Source is taller than 9:16 — crop top/bottom
+            sh = Math.round(img.width / OUT_RATIO)
+            sy = Math.round((img.height - sh) / 2)
           }
 
-          // Upscale so shorter side >= 720px (no downscale cap — TikTok accepts
-          // large images; none of the observed failures were size-related)
-          const croppedShorter = Math.min(sw, sh)
-          const scale = croppedShorter < 720 ? 720 / croppedShorter : 1
           const canvas = document.createElement('canvas')
-          canvas.width = Math.round(sw * scale)
-          canvas.height = Math.round(sh * scale)
-          canvas.getContext('2d')!.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
+          canvas.width = OUT_W
+          canvas.height = OUT_H
+          canvas.getContext('2d')!.drawImage(img, sx, sy, sw, sh, 0, 0, OUT_W, OUT_H)
           canvas.toBlob(blob => {
             if (blob) {
               validFiles.push(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }))
