@@ -225,7 +225,7 @@ function BuilderContent() {
               onDragStart={() => handleDragStart(i)}
               onDragOver={e => e.preventDefault()}
               onDrop={() => handleDrop(i)}
-              className="relative shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-grab active:cursor-grabbing border border-gray-700 hover:border-violet-500 transition-colors"
+              className="relative shrink-0 w-20 h-20 rounded-lg overflow-hidden cursor-grab active:cursor-grabbing border border-gray-700 hover:border-gray-400 transition-colors"
             >
               <img src={img.proxy_url} alt={img.filename} className="w-full h-full object-cover" />
               <span className="absolute bottom-0.5 left-0.5 text-[10px] bg-black/60 rounded px-1 text-white">
@@ -241,7 +241,7 @@ function BuilderContent() {
           ))}
         </div>
         {images.length < 2 && (
-          <p className="text-xs text-amber-500 mt-1.5">Need at least 2 images for a TikTok slideshow.</p>
+          <p className="text-xs text-gray-500 mt-1.5">Need at least 2 images for a TikTok slideshow.</p>
         )}
       </div>
 
@@ -254,14 +254,14 @@ function BuilderContent() {
               <select
                 value=""
                 onChange={e => { if (e.target.value) setCaption(captions.find(c => c.id === e.target.value)?.text ?? caption) }}
-                className="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-violet-500"
+                className="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-gray-400"
               >
                 <option value="">Load from library</option>
                 {captions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             )}
             {caption.trim() && !showSaveCaption && (
-              <button onClick={() => setShowSaveCaption(true)} className="text-xs text-violet-400 hover:text-violet-300">
+              <button onClick={() => setShowSaveCaption(true)} className="text-xs text-gray-300 hover:text-white">
                 Save to library
               </button>
             )}
@@ -272,7 +272,7 @@ function BuilderContent() {
           onChange={e => setCaption(e.target.value)}
           placeholder="Write your caption..."
           rows={4}
-          className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 resize-none focus:outline-none focus:border-violet-500 transition-colors"
+          className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 resize-none focus:outline-none focus:border-gray-400 transition-colors"
         />
         {showSaveCaption && (
           <div className="flex items-center gap-2 mt-2">
@@ -283,9 +283,9 @@ function BuilderContent() {
               value={newCaptionName}
               onChange={e => setNewCaptionName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') saveCaption() }}
-              className="flex-1 px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded focus:outline-none focus:border-violet-500"
+              className="flex-1 px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded focus:outline-none focus:border-gray-400"
             />
-            <button onClick={saveCaption} disabled={savingCaption} className="px-3 py-1 text-sm bg-violet-600 hover:bg-violet-700 rounded disabled:opacity-50">
+            <button onClick={saveCaption} disabled={savingCaption} className="px-3 py-1 text-sm bg-white text-gray-950 hover:bg-gray-200 rounded disabled:opacity-50">
               {savingCaption ? '...' : 'Save'}
             </button>
             <button onClick={() => setShowSaveCaption(false)} className="text-sm text-gray-500 hover:text-white">Cancel</button>
@@ -301,19 +301,19 @@ function BuilderContent() {
             <select
               value={selectedSetId}
               onChange={e => handleSetChange(e.target.value)}
-              className="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-violet-500"
+              className="text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-gray-400"
             >
               <option value="">Custom</option>
               {sets.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
             {hashtags.length > 0 && !showSaveSet && (
-              <button onClick={() => setShowSaveSet(true)} className="text-xs text-violet-400 hover:text-violet-300">
+              <button onClick={() => setShowSaveSet(true)} className="text-xs text-gray-300 hover:text-white">
                 Save as set
               </button>
             )}
           </div>
         </div>
-        <div className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 flex flex-wrap gap-1.5 min-h-11 focus-within:border-violet-500 transition-colors">
+        <div className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 flex flex-wrap gap-1.5 min-h-11 focus-within:border-gray-400 transition-colors">
           {hashtags.map((tag, i) => (
             <span key={i} className="flex items-center gap-1 bg-gray-800 rounded px-2 py-0.5 text-sm text-gray-300">
               #{tag}
@@ -344,12 +344,12 @@ function BuilderContent() {
               value={newSetName}
               onChange={e => setNewSetName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') saveHashtagSet() }}
-              className="flex-1 px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded focus:outline-none focus:border-violet-500"
+              className="flex-1 px-2 py-1 text-sm bg-gray-800 border border-gray-600 rounded focus:outline-none focus:border-gray-400"
             />
             <button
               onClick={saveHashtagSet}
               disabled={savingSet}
-              className="px-3 py-1 text-sm bg-violet-600 hover:bg-violet-700 rounded disabled:opacity-50"
+              className="px-3 py-1 text-sm bg-white text-gray-950 hover:bg-gray-200 rounded disabled:opacity-50"
             >
               {savingSet ? '...' : 'Save'}
             </button>
@@ -368,7 +368,7 @@ function BuilderContent() {
           value={draftName}
           onChange={e => setDraftName(e.target.value)}
           placeholder="e.g. Monday food post"
-          className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-violet-500 transition-colors"
+          className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-gray-400 transition-colors"
         />
       </div>
 
@@ -377,7 +377,7 @@ function BuilderContent() {
       <button
         onClick={saveDraft}
         disabled={saving || images.length < 2 || !caption.trim()}
-        className="w-full py-3 bg-violet-600 hover:bg-violet-700 rounded-xl font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full py-3 bg-white text-gray-950 hover:bg-gray-200 rounded-xl font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {saving ? 'Saving...' : existingDraftId ? 'Update Draft' : 'Save Draft →'}
       </button>

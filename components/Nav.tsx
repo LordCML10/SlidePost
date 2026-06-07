@@ -95,7 +95,7 @@ export default function Nav() {
             {accounts.length === 0 ? (
               <a
                 href="/api/auth/tiktok"
-                className="text-sm bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-md transition-colors"
+                className="text-sm bg-white hover:bg-gray-200 text-gray-950 px-3 py-1.5 rounded-md transition-colors"
               >
                 Connect TikTok
               </a>
@@ -103,7 +103,7 @@ export default function Nav() {
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen(o => !o)}
-                  className="flex items-center gap-1.5 text-xs text-green-400 hover:text-green-300 transition-colors"
+                  className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white transition-colors"
                 >
                   {activeAccount?.avatar_url ? (
                     <img
@@ -112,7 +112,7 @@ export default function Nav() {
                       className="w-4 h-4 rounded-full object-cover"
                     />
                   ) : (
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-white inline-block" />
                   )}
                   <span>{activeAccount ? accountLabel(activeAccount) : 'TikTok'}</span>
                   <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
@@ -121,7 +121,7 @@ export default function Nav() {
                 </button>
 
                 {menuOpen && (
-                  <div className="absolute right-0 top-full mt-2 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl min-w-[220px] py-1 z-50">
+                  <div className="absolute right-0 top-full mt-2 bg-gray-900 border border-gray-700 rounded-lg min-w-[220px] py-1 z-50">
                     {accounts.map(acc => (
                       <div
                         key={acc.id}
@@ -143,7 +143,7 @@ export default function Nav() {
                           {accountLabel(acc)}
                         </button>
                         {acc.id === activeAccountId && (
-                          <svg className="w-3.5 h-3.5 text-green-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                          <svg className="w-3.5 h-3.5 text-white shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
                         )}
@@ -162,7 +162,7 @@ export default function Nav() {
                     <div className="border-t border-gray-800 mt-1 pt-1">
                       <a
                         href="/api/auth/tiktok"
-                        className="flex items-center gap-2 px-3 py-2 text-xs text-violet-400 hover:text-violet-300 hover:bg-gray-800 transition-colors"
+                        className="flex items-center gap-2 px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />

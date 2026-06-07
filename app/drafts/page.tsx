@@ -22,7 +22,7 @@ function DraftCard({
 
   return (
     <div className={`bg-gray-900 rounded-xl overflow-hidden border transition-colors ${
-      selected ? 'border-violet-500' : 'border-gray-800'
+      selected ? 'border-white' : 'border-gray-800'
     }`}>
       {/* Thumbnail */}
       <div className="relative aspect-video bg-gray-800">
@@ -34,17 +34,17 @@ function DraftCard({
         <button
           onClick={onToggle}
           className={`absolute top-2 left-2 w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-            selected ? 'bg-violet-600 border-violet-600' : 'bg-black/50 border-white/30'
+            selected ? 'bg-white border-white' : 'bg-black/50 border-white/30'
           }`}
         >
           {selected && (
-            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+            <svg className="w-3 h-3 text-gray-950" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           )}
         </button>
         {draft.posted && (
-          <span className="absolute top-2 right-2 text-[10px] bg-green-600 text-white px-1.5 py-0.5 rounded">
+          <span className="absolute top-2 right-2 text-[10px] bg-white text-gray-950 px-1.5 py-0.5 rounded">
             Sent
           </span>
         )}
@@ -56,7 +56,7 @@ function DraftCard({
       {/* Body */}
       <div className="p-3">
         {draft.name && (
-          <p className="text-xs text-violet-400 font-medium mb-0.5 truncate">{draft.name}</p>
+          <p className="text-xs text-gray-400 font-medium mb-0.5 truncate">{draft.name}</p>
         )}
         <p className="text-sm text-gray-200 leading-snug line-clamp-2 mb-2">{draft.caption}</p>
         {hashtagCount > 0 && (
@@ -210,16 +210,16 @@ export default function DraftsPage() {
             <div className="flex items-center gap-2">
               {activeAccount && (
                 <span className="text-xs text-gray-500">
-                  as <span className="text-green-400">{activeAccount.display_name ?? `TikTok #${activeAccount.open_id.slice(-6)}`}</span>
+                  as <span className="text-gray-200">{activeAccount.display_name ?? `TikTok #${activeAccount.open_id.slice(-6)}`}</span>
                 </span>
               )}
               {!activeAccount && (
-                <a href="/api/auth/tiktok" className="text-xs text-yellow-500 hover:underline">Connect TikTok first</a>
+                <a href="/api/auth/tiktok" className="text-xs text-gray-300 hover:underline">Connect TikTok first</a>
               )}
               <button
                 onClick={postSelected}
                 disabled={posting || !activeAccount}
-                className="px-4 py-1.5 text-sm bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors disabled:opacity-50"
+                className="px-4 py-1.5 text-sm bg-white text-gray-950 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
               >
                 {posting ? 'Posting...' : `Post Selected (${selectedArray.length})`}
               </button>
@@ -237,7 +237,7 @@ export default function DraftsPage() {
               const failed = r.tiktokStatus === 'FAILED'
               const sent = r.tiktokStatus === 'PUBLISHED_PUBLIC' || r.tiktokStatus === 'PUBLISHED_PRIVATE' || r.tiktokStatus === 'IN_REVIEW'
               const icon = !r.success ? '✗' : r.checking ? '…' : failed ? '✗' : '✓'
-              const color = !r.success || failed ? 'text-red-400' : r.checking ? 'text-yellow-400' : 'text-green-400'
+              const color = !r.success || failed ? 'text-red-400' : r.checking ? 'text-gray-500' : 'text-gray-200'
               let msg = ''
               if (!r.success) msg = r.error ?? 'Failed'
               else if (r.checking) msg = 'Sent — checking TikTok status...'
@@ -274,7 +274,7 @@ export default function DraftsPage() {
             <p className="text-gray-500 mb-4">No drafts yet.</p>
             <button
               onClick={() => router.push('/library')}
-              className="px-4 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg text-sm transition-colors"
+              className="px-4 py-2 bg-white text-gray-950 hover:bg-gray-200 rounded-lg text-sm transition-colors"
             >
               ← Go to Library
             </button>

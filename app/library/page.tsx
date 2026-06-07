@@ -21,7 +21,7 @@ function Thumb({
     <div
       onClick={onOpen}
       className={`relative aspect-square rounded-lg overflow-hidden cursor-pointer group ${
-        selected ? 'ring-2 ring-violet-500 ring-offset-1 ring-offset-gray-950' : ''
+        selected ? 'ring-2 ring-white ring-offset-1 ring-offset-gray-950' : ''
       }`}
     >
       <img
@@ -40,18 +40,18 @@ function Thumb({
         onClick={e => { e.stopPropagation(); onToggle() }}
         className={`absolute top-1.5 left-1.5 w-5 h-5 rounded border flex items-center justify-center transition-all ${
           selected
-            ? 'bg-violet-600 border-violet-600 opacity-100'
+            ? 'bg-white border-white opacity-100'
             : 'bg-black/50 border-white/30 opacity-0 group-hover:opacity-100'
         }`}
       >
         {selected && (
-          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+          <svg className="w-3 h-3 text-gray-950" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         )}
       </button>
       {landscape && (
-        <span className="absolute bottom-1 right-1 text-[9px] bg-yellow-500/90 text-black font-semibold px-1 rounded leading-4">
+        <span className="absolute bottom-1 right-1 text-[9px] bg-white/90 text-black font-semibold px-1 rounded leading-4">
           ↔
         </span>
       )}
@@ -130,7 +130,7 @@ function Modal({
       onClick={onClose}
     >
       <div
-        className="bg-gray-900 rounded-xl overflow-hidden max-w-2xl w-full flex flex-col sm:flex-row shadow-2xl"
+        className="bg-gray-900 rounded-xl overflow-hidden max-w-2xl w-full flex flex-col sm:flex-row border border-gray-800"
         onClick={e => e.stopPropagation()}
       >
         <div className="sm:w-80 bg-black flex items-center justify-center min-h-48">
@@ -147,7 +147,7 @@ function Modal({
               value={image.tag_id ?? ''}
               disabled={moving}
               onChange={e => handleMove(e.target.value || null)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500 disabled:opacity-50"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gray-400 disabled:opacity-50"
             >
               <option value="">Untagged</option>
               {tags.map(tag => (
@@ -442,7 +442,7 @@ export default function LibraryPage() {
           <button
             onClick={() => router.push(`/builder?images=${Array.from(selectedIds).slice(0, 10).join(',')}`)}
             disabled={selectedCount < 2}
-            className="px-3 py-1.5 text-sm bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-sm bg-white text-gray-950 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Build Draft{selectedCount >= 2 ? ` (${Math.min(selectedCount, 10)})` : ''} →
           </button>
@@ -457,7 +457,7 @@ export default function LibraryPage() {
             onClick={() => { setActiveTab(t.id); setSelectedIds(new Set()) }}
             className={`px-3 py-1 rounded-md text-sm transition-colors ${
               activeTab === t.id
-                ? 'bg-violet-600 text-white'
+                ? 'bg-white text-gray-950'
                 : 'bg-gray-800 text-gray-400 hover:text-white'
             }`}
           >
@@ -470,7 +470,7 @@ export default function LibraryPage() {
             onClick={() => { setActiveTab(tag.id); setSelectedIds(new Set()) }}
             className={`px-3 py-1 rounded-md text-sm transition-colors ${
               activeTab === tag.id
-                ? 'bg-violet-600 text-white'
+                ? 'bg-white text-gray-950'
                 : 'bg-gray-800 text-gray-400 hover:text-white'
             }`}
           >
@@ -489,12 +489,12 @@ export default function LibraryPage() {
                 if (e.key === 'Enter') createTag()
                 if (e.key === 'Escape') { setShowNewTag(false); setNewTagName('') }
               }}
-              className="w-28 px-2 py-1 rounded-md text-sm bg-gray-800 border border-gray-600 focus:outline-none focus:border-violet-500"
+              className="w-28 px-2 py-1 rounded-md text-sm bg-gray-800 border border-gray-600 focus:outline-none focus:border-gray-400"
             />
             <button
               onClick={createTag}
               disabled={creatingTag}
-              className="px-2 py-1 text-sm bg-violet-600 hover:bg-violet-700 rounded-md disabled:opacity-50"
+              className="px-2 py-1 text-sm bg-white text-gray-950 hover:bg-gray-200 rounded-md disabled:opacity-50"
             >
               {creatingTag ? '...' : 'Add'}
             </button>
@@ -551,7 +551,7 @@ export default function LibraryPage() {
               <p className="text-gray-500 mb-4">No images yet.</p>
               <label
                 htmlFor="file-import-input"
-                className="px-4 py-2 bg-violet-600 hover:bg-violet-700 rounded-lg text-sm transition-colors cursor-pointer"
+                className="px-4 py-2 bg-white text-gray-950 hover:bg-gray-200 rounded-lg text-sm transition-colors cursor-pointer"
               >
                 ↑ Import your first images
               </label>

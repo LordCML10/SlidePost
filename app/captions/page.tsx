@@ -59,7 +59,7 @@ export default function CaptionsPage() {
         <h1 className="text-xl font-semibold">Caption Library</h1>
         <button
           onClick={() => setShowNew(v => !v)}
-          className="px-3 py-1.5 text-sm bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors"
+          className="px-3 py-1.5 text-sm bg-white text-gray-950 hover:bg-gray-200 rounded-lg transition-colors"
         >
           {showNew ? 'Cancel' : '+ New Caption'}
         </button>
@@ -75,7 +75,7 @@ export default function CaptionsPage() {
               value={newName}
               onChange={e => setNewName(e.target.value)}
               placeholder="e.g. Food Post Template"
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400"
             />
           </div>
           <div className="mb-4">
@@ -85,14 +85,14 @@ export default function CaptionsPage() {
               onChange={e => setNewText(e.target.value)}
               placeholder="Write your caption..."
               rows={5}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-violet-500"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:border-gray-400"
             />
           </div>
           {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
           <button
             onClick={createCaption}
             disabled={saving || !newName.trim() || !newText.trim()}
-            className="px-4 py-2 text-sm bg-violet-600 hover:bg-violet-700 rounded-lg disabled:opacity-50 transition-colors"
+            className="px-4 py-2 text-sm bg-white text-gray-950 hover:bg-gray-200 rounded-lg disabled:opacity-50 transition-colors"
           >
             {saving ? 'Saving...' : 'Save Caption'}
           </button>
@@ -111,7 +111,7 @@ export default function CaptionsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {captions.map(caption => (
               <div key={caption.id} className="bg-gray-900 rounded-xl border border-gray-800 p-4 flex flex-col">
-                <p className="text-sm font-medium text-violet-400 mb-2">{caption.name}</p>
+                <p className="text-sm font-medium text-white mb-2">{caption.name}</p>
                 <p className="text-sm text-gray-300 whitespace-pre-wrap line-clamp-5 flex-1">{caption.text}</p>
                 <button
                   onClick={() => deleteCaption(caption.id)}

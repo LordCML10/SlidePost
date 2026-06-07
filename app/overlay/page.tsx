@@ -437,7 +437,7 @@ export default function OverlayPage() {
           {activeSlide?.burnedB64 ? (
             <div className="flex rounded-full bg-gray-800 p-0.5 text-xs">
               <button onClick={() => setShowBurned(false)} className={`px-3 py-1 rounded-full transition-colors ${!showBurned ? 'bg-gray-600 text-white' : 'text-gray-400 hover:text-white'}`}>Preview</button>
-              <button onClick={() => setShowBurned(true)} className={`px-3 py-1 rounded-full transition-colors ${showBurned ? 'bg-violet-600 text-white' : 'text-gray-400 hover:text-white'}`}>Burned ✓</button>
+              <button onClick={() => setShowBurned(true)} className={`px-3 py-1 rounded-full transition-colors ${showBurned ? 'bg-white text-gray-950' : 'text-gray-400 hover:text-white'}`}>Burned ✓</button>
             </div>
           ) : (
             <div className="h-[26px]" />
@@ -465,8 +465,8 @@ export default function OverlayPage() {
           <div>
             <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 block">Source</label>
             <div className="flex gap-2">
-              <button onClick={() => setMode('upload')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'upload' ? 'bg-violet-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>↑ Upload</button>
-              <button onClick={() => setMode('draft')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'draft' ? 'bg-violet-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>📂 Load Draft</button>
+              <button onClick={() => setMode('upload')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'upload' ? 'bg-white text-gray-950' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>↑ Upload</button>
+              <button onClick={() => setMode('draft')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${mode === 'draft' ? 'bg-white text-gray-950' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>📂 Load Draft</button>
             </div>
             {mode === 'draft' && (
               <div className="mt-2">
@@ -474,7 +474,7 @@ export default function OverlayPage() {
                   <p className="text-xs text-gray-500 mt-1">No drafts yet — create one in the Drafts tab first.</p>
                 ) : (
                   <select
-                    className="w-full bg-gray-800 border border-gray-700 text-sm text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-violet-500 disabled:opacity-50"
+                    className="w-full bg-gray-800 border border-gray-700 text-sm text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-gray-400 disabled:opacity-50"
                     defaultValue=""
                     onChange={e => { if (e.target.value) selectDraft(e.target.value) }}
                     disabled={loadingDraft}
@@ -497,7 +497,7 @@ export default function OverlayPage() {
                   Slides {hasSlides && `${slides.length}/10`}
                 </label>
                 {mode === 'upload' && slides.length < 10 && (
-                  <label className="text-xs text-violet-400 hover:text-violet-300 cursor-pointer transition-colors">
+                  <label className="text-xs text-gray-300 hover:text-white cursor-pointer transition-colors">
                     + Add More
                     <input type="file" multiple accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFiles} />
                   </label>
@@ -505,7 +505,7 @@ export default function OverlayPage() {
               </div>
 
               {mode === 'upload' && slides.length === 0 ? (
-                <label className="flex flex-col items-center justify-center w-full h-24 rounded-xl border-2 border-dashed border-gray-700 hover:border-violet-600 text-gray-500 hover:text-gray-400 text-sm cursor-pointer transition-colors gap-1.5">
+                <label className="flex flex-col items-center justify-center w-full h-24 rounded-xl border-2 border-dashed border-gray-700 hover:border-gray-500 text-gray-500 hover:text-gray-400 text-sm cursor-pointer transition-colors gap-1.5">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
                   Click to upload (up to 10 images)
                   <input type="file" multiple accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFiles} />
@@ -514,11 +514,11 @@ export default function OverlayPage() {
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {slides.map((slide, i) => (
                     <div key={i} className="relative shrink-0 group">
-                      <button onClick={() => goTo(i)} className={`w-14 h-14 rounded-lg overflow-hidden border-2 transition-all block ${i === activeIndex ? 'border-violet-500 scale-105' : 'border-gray-700 hover:border-gray-500'}`}>
+                      <button onClick={() => goTo(i)} className={`w-14 h-14 rounded-lg overflow-hidden border-2 transition-all block ${i === activeIndex ? 'border-white scale-105' : 'border-gray-700 hover:border-gray-500'}`}>
                         <img src={slide.previewUrl} alt={`Slide ${i + 1}`} className="w-full h-full object-cover" />
                       </button>
                       {slide.burnedB64 && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-500 border border-gray-900 flex items-center justify-center text-[8px] text-white pointer-events-none">✓</span>
+                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-white border border-gray-900 flex items-center justify-center text-[8px] text-gray-950 pointer-events-none">✓</span>
                       )}
                       {mode === 'upload' && (
                         <button onClick={() => removeSlide(i)} className="absolute -bottom-1 -left-1 w-4 h-4 rounded-full bg-gray-700 hover:bg-red-700 text-white flex items-center justify-center text-[8px] transition-colors opacity-0 group-hover:opacity-100">✕</button>
@@ -536,7 +536,7 @@ export default function OverlayPage() {
               <div>
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5 block">Text — Slide {activeIndex + 1}</label>
                 <textarea
-                  className="w-full bg-gray-900 border border-gray-700 text-sm text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-violet-500 resize-none placeholder-gray-600"
+                  className="w-full bg-gray-900 border border-gray-700 text-sm text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-gray-400 resize-none placeholder-gray-600"
                   rows={3}
                   placeholder="Type your slide caption…"
                   value={activeSlide.text}
@@ -547,7 +547,7 @@ export default function OverlayPage() {
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5 block">Position</label>
                 <div className="flex gap-1.5">
                   {(['top', 'center', 'bottom'] as Position[]).map(p => (
-                    <button key={p} onClick={() => updateActive({ position: p })} className={`flex-1 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${activeSlide.position === p ? 'bg-violet-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>{p}</button>
+                    <button key={p} onClick={() => updateActive({ position: p })} className={`flex-1 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors ${activeSlide.position === p ? 'bg-white text-gray-950' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>{p}</button>
                   ))}
                 </div>
               </div>
@@ -560,7 +560,7 @@ export default function OverlayPage() {
               <div>
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5 block">TikTok Caption</label>
                 <textarea
-                  className="w-full bg-gray-900 border border-gray-700 text-sm text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-violet-500 resize-none placeholder-gray-600"
+                  className="w-full bg-gray-900 border border-gray-700 text-sm text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-gray-400 resize-none placeholder-gray-600"
                   rows={2}
                   placeholder="Caption for your TikTok post…"
                   value={caption}
@@ -571,7 +571,7 @@ export default function OverlayPage() {
               <div>
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5 block">Hashtag Set</label>
                 <select
-                  className="w-full bg-gray-900 border border-gray-700 text-sm text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-violet-500"
+                  className="w-full bg-gray-900 border border-gray-700 text-sm text-white rounded-lg px-3 py-2.5 focus:outline-none focus:border-gray-400"
                   value={selectedHashtagSetId ?? ''}
                   onChange={e => setSelectedHashtagSetId(e.target.value || null)}
                 >
@@ -597,7 +597,7 @@ export default function OverlayPage() {
               <button
                 onClick={burnAll}
                 disabled={burningAll}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold transition-colors bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-2.5 rounded-xl text-sm font-semibold transition-colors bg-white hover:bg-gray-200 text-gray-950 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {burningAll
                   ? `Burning slide ${burnProgress} of ${slides.length}…`
@@ -610,29 +610,29 @@ export default function OverlayPage() {
                 <>
                   {/* TikTok account indicator */}
                   {activeAccount === null ? (
-                    <p className="text-xs text-yellow-600">
+                    <p className="text-xs text-gray-400">
                       No TikTok account connected —{' '}
-                      <a href="/api/auth/tiktok" className="text-violet-400 hover:underline">Connect now</a>
+                      <a href="/api/auth/tiktok" className="text-gray-300 hover:underline">Connect now</a>
                     </p>
                   ) : activeAccount !== 'loading' && (
                     <p className="text-xs text-gray-500">
                       Posting as{' '}
-                      <span className="text-green-400">
+                      <span className="text-gray-300">
                         {activeAccount.display_name ?? `TikTok #${activeAccount.open_id.slice(-6)}`}
                       </span>
-                      {' '}· <a href="#" onClick={e => { e.preventDefault(); window.location.href='/api/auth/tiktok' }} className="text-violet-400 hover:underline">switch</a>
+                      {' '}· <a href="#" onClick={e => { e.preventDefault(); window.location.href='/api/auth/tiktok' }} className="text-gray-300 hover:underline">switch</a>
                     </p>
                   )}
 
                   {/* Download + Post */}
                   <div className="flex gap-2">
                     <button onClick={downloadAll} className="flex-1 py-2 rounded-xl text-sm font-medium bg-gray-800 hover:bg-gray-700 text-white transition-colors">↓ Download</button>
-                    <button onClick={postToTikTok} disabled={posting || activeAccount === null} className="flex-1 py-2 rounded-xl text-sm font-semibold bg-pink-600 hover:bg-pink-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <button onClick={postToTikTok} disabled={posting || activeAccount === null} className="flex-1 py-2 rounded-xl text-sm font-semibold bg-white hover:bg-gray-200 text-gray-950 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                       {posting ? (postStatus ?? 'Posting…') : '🚀 Post to TikTok'}
                     </button>
                   </div>
                   {postResult && (
-                    <p className={`text-xs ${postResult.ok ? 'text-green-400' : 'text-red-400'}`}>{postResult.msg}</p>
+                    <p className={`text-xs ${postResult.ok ? 'text-gray-300' : 'text-red-400'}`}>{postResult.msg}</p>
                   )}
 
                   {/* Save as New Draft */}
@@ -641,7 +641,7 @@ export default function OverlayPage() {
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        className="flex-1 bg-gray-900 border border-gray-700 text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-violet-500 placeholder-gray-600 min-w-0"
+                        className="flex-1 bg-gray-900 border border-gray-700 text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-gray-400 placeholder-gray-600 min-w-0"
                         placeholder="New draft name…"
                         value={newDraftName}
                         onChange={e => setNewDraftName(e.target.value)}
@@ -655,7 +655,7 @@ export default function OverlayPage() {
                       </button>
                     </div>
                     {saveResult && (
-                      <p className={`text-xs mt-1.5 ${saveResult.ok ? 'text-green-400' : 'text-red-400'}`}>{saveResult.msg}</p>
+                      <p className={`text-xs mt-1.5 ${saveResult.ok ? 'text-gray-300' : 'text-red-400'}`}>{saveResult.msg}</p>
                     )}
                   </div>
                 </>
@@ -666,7 +666,7 @@ export default function OverlayPage() {
                 <p className="text-xs text-gray-600 text-center">Burn all slides to unlock download, post & save</p>
               )}
               {allBurned && slides.length < 2 && (
-                <p className="text-xs text-yellow-600 text-center">TikTok requires at least 2 slides to post</p>
+                <p className="text-xs text-gray-400 text-center">TikTok requires at least 2 slides to post</p>
               )}
               {burnError && <p className="text-xs text-red-400">{burnError}</p>}
             </div>
