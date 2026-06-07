@@ -244,16 +244,13 @@ export default function LibraryPage() {
     setImporting(true)
     setImportError(null)
     try {
-      // Normalise EVERY image to an identical 1080×1920 (9:16) JPEG via canvas.
-      // TikTok's PULL_FROM_URL fails (picture_size_check_failed) on slideshows
-      // that mix aspect ratios, and on 4:4:4 / ICC-tagged images. Forcing one
-      // fixed output size sidesteps all of it: every image in every slideshow is
-      // byte-shape-identical (same dims, same 9:16 ratio), 4:2:0 (canvas at 0.8
-      // quality), and free of ICC/EXIF (canvas re-encode strips them).
-      // Cover-crop = scale to fill, center-crop the overflow.
-      const OUT_W = 1080
-      const OUT_H = 1920
-      const OUT_RATIO = OUT_W / OUT_H
+      // Crop every image to exactly 9:16 but keep its NATIVE resolution (no
+      // scaling to a fixed size) — preserves sharpness. All images share the
+      // 9:16 ratio (mixed ratios are what TikTok rejects) but may differ in
+      // pixel dimensions. Canvas re-encode at 0.8 gives 4:2:0 and strips ICC/EXIF.
+      // Safety floor: upscale only if the shorter side would fall below 720px.
+      const OUT_RATIO = 9 / 16
+      const MIN_SHORT = 720
       const validFiles: File[] = []
       await Promise.all(files.map(file => new Promise<void>(resolve => {
         const url = URL.createObjectURL(file)
@@ -273,10 +270,13 @@ export default function LibraryPage() {
             sy = Math.round((img.height - sh) / 2)
           }
 
+          // Output at native cropped size; only upscale if shorter side < 720px
+          const shorter = Math.min(sw, sh)
+          const scale = shorter < MIN_SHORT ? MIN_SHORT / shorter : 1
           const canvas = document.createElement('canvas')
-          canvas.width = OUT_W
-          canvas.height = OUT_H
-          canvas.getContext('2d')!.drawImage(img, sx, sy, sw, sh, 0, 0, OUT_W, OUT_H)
+          canvas.width = Math.round(sw * scale)
+          canvas.height = Math.round(sh * scale)
+          canvas.getContext('2d')!.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
           canvas.toBlob(blob => {
             if (blob) {
               validFiles.push(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }))
