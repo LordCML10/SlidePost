@@ -107,7 +107,10 @@ export async function postVideo({
         source: 'PULL_FROM_URL',
         video_url: videoUrl,
       },
-      post_mode: 'MEDIA_UPLOAD',
+      // Unlike PHOTO (which supports MEDIA_UPLOAD — drops into the user's draft inbox),
+      // TikTok's content-posting API only accepts DIRECT_POST for media_type VIDEO.
+      // MEDIA_UPLOAD + VIDEO is rejected with "Invalid media_type or post_mode".
+      post_mode: 'DIRECT_POST',
       media_type: 'VIDEO',
     }),
   })
