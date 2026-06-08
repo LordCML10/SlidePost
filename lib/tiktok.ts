@@ -80,43 +80,39 @@ export async function postPhotoSlideshow({
   return data.data as { publish_id: string }
 }
 
+// Sends the video to the user's TikTok inbox/drafts (the "Manage Your Audience" /
+// content-posting "send to inbox" flow) — they get a notification, open the app, and
+// finish posting (caption, privacy, cover, etc.) themselves. This is the video
+// equivalent of the photo MEDIA_UPLOAD flow, but video uses its own dedicated inbox
+// endpoint rather than media_type/post_mode on the unified content/init endpoint
+// (that combo — VIDEO + MEDIA_UPLOAD — is rejected with "Invalid media_type or post_mode").
+// Requires the `video.upload` scope (not `video.publish`, which DIRECT_POST needs).
+const TIKTOK_INBOX_VIDEO_URL = 'https://open.tiktokapis.com/v2/post/publish/inbox/video/init/'
+
 export async function postVideo({
   accessToken,
   videoUrl,
-  description,
 }: {
   accessToken: string
   videoUrl: string
-  description: string
+  description?: string
 }) {
-  const res = await fetch(TIKTOK_POST_URL, {
+  const res = await fetch(TIKTOK_INBOX_VIDEO_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      post_info: {
-        title: description,
-        privacy_level: 'SELF_ONLY',
-        disable_duet: false,
-        disable_comment: false,
-        disable_stitch: false,
-      },
       source_info: {
         source: 'PULL_FROM_URL',
         video_url: videoUrl,
       },
-      // Unlike PHOTO (which supports MEDIA_UPLOAD — drops into the user's draft inbox),
-      // TikTok's content-posting API only accepts DIRECT_POST for media_type VIDEO.
-      // MEDIA_UPLOAD + VIDEO is rejected with "Invalid media_type or post_mode".
-      post_mode: 'DIRECT_POST',
-      media_type: 'VIDEO',
     }),
   })
 
   const text = await res.text()
-  console.log('[TikTok post video] status:', res.status, 'body:', text)
+  console.log('[TikTok post video → inbox] status:', res.status, 'body:', text)
 
   let data: Record<string, unknown>
   try {
