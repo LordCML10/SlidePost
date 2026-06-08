@@ -6,9 +6,11 @@ import { getDecryptedToken } from '@/lib/tiktokAccounts'
 import type { ClipPostResult } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
-
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://slide-post.vercel.app'
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+// Node runtime (not edge): we download the full clip into memory and stream chunked
+// PUT uploads to TikTok — needs Node's fetch/Buffer behavior, not the edge runtime.
+export const runtime = 'nodejs'
+// Clips can be tens of MB; give the upload room beyond the default function timeout.
+export const maxDuration = 60
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -62,17 +64,21 @@ export async function POST(req: NextRequest) {
         continue
       }
 
-      // Same proxy pattern as /api/clips and bulk-post: TikTok's PULL_FROM_URL
-      // requires a verified domain, so route through our own domain rather than
-      // handing TikTok a raw supabase.co URL.
-      const publicUrl = `${supabaseUrl}/storage/v1/object/public/clips/${clip.storage_path}`
-      // Dedicated video proxy (Range/HEAD-aware) — see app/api/video/route.ts for why
-      // this can't just reuse /api/image.
-      const videoUrl = `${appUrl}/api/video?src=${encodeURIComponent(publicUrl)}`
+      // Download the clip bytes from Storage and push them straight to TikTok via
+      // FILE_UPLOAD. We deliberately do NOT use PULL_FROM_URL (have TikTok fetch our
+      // /api/video proxy) — that path consistently failed with fail_reason "internal"
+      // despite byte-perfect delivery. FILE_UPLOAD removes the proxy/CDN/pull layer.
+      const { data: blob, error: dlError } = await supabaseAdmin.storage
+        .from('clips')
+        .download(clip.storage_path)
 
-      const description = clip.caption ?? ''
+      if (dlError || !blob) {
+        results.push({ clipId, success: false, error: 'Failed to download clip from storage' })
+        continue
+      }
 
-      const result = await postVideo({ accessToken: token, videoUrl, description })
+      const video = new Uint8Array(await blob.arrayBuffer())
+      const result = await postVideo({ accessToken: token, video })
 
       await supabaseAdmin
         .from('clips')
