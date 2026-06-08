@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       }
 
       const video = new Uint8Array(await blob.arrayBuffer())
-      const result = await postVideo({ accessToken: token, video })
+      const result = await postVideo({ accessToken: token, video, caption: clip.caption ?? undefined })
 
       await supabaseAdmin
         .from('clips')

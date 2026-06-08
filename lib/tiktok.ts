@@ -116,31 +116,40 @@ export function planVideoChunks(size: number): { chunkSize: number; chunks: { st
 export async function postVideo({
   accessToken,
   video,
+  caption,
   mimeType = 'video/mp4',
 }: {
   accessToken: string
   video: Uint8Array
+  caption?: string
   mimeType?: string
-  description?: string
 }) {
   const size = video.byteLength
   const { chunkSize, chunks } = planVideoChunks(size)
 
   // 1. Initialize the upload — TikTok returns an upload_url + publish_id.
+  // The inbox endpoint accepts post_info.title to pre-fill the draft's caption
+  // (verified against the live API: init returns 200 + upload_url). Without it,
+  // TikTok shows its own placeholder (the app name) in the draft.
+  const initBody: Record<string, unknown> = {
+    source_info: {
+      source: 'FILE_UPLOAD',
+      video_size: size,
+      chunk_size: chunkSize,
+      total_chunk_count: chunks.length,
+    },
+  }
+  if (caption && caption.trim()) {
+    initBody.post_info = { title: caption.trim() }
+  }
+
   const initRes = await fetch(TIKTOK_INBOX_VIDEO_URL, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      source_info: {
-        source: 'FILE_UPLOAD',
-        video_size: size,
-        chunk_size: chunkSize,
-        total_chunk_count: chunks.length,
-      },
-    }),
+    body: JSON.stringify(initBody),
   })
 
   const initText = await initRes.text()
