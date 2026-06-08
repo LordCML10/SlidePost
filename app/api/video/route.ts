@@ -55,7 +55,13 @@ async function proxyVideo(req: NextRequest, method: 'GET' | 'HEAD') {
 
     const headers: Record<string, string> = {
       'Content-Type': contentType,
-      'Cache-Control': 'public, max-age=3600',
+      // Do NOT let the CDN cache this. TikTok pulls the file in hundreds of small
+      // byte-ranges; Vercel's edge cache keys on URL and does not vary on the Range
+      // header, so a cached response for one range was being served for a DIFFERENT
+      // range request — TikTok reassembled mismatched chunks into a corrupt file and
+      // failed the publish with "internal". no-store forces every range to be served
+      // fresh and correct straight from Supabase.
+      'Cache-Control': 'no-store',
       'Accept-Ranges': acceptRanges ?? 'bytes',
     }
     if (contentLength) headers['Content-Length'] = contentLength
