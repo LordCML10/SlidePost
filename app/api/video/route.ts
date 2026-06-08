@@ -41,7 +41,11 @@ async function proxyVideo(req: NextRequest, method: 'GET' | 'HEAD') {
       return new NextResponse('Failed to fetch video', { status: 502 })
     }
 
-    const contentType = upstream.headers.get('content-type') ?? 'video/mp4'
+    // Force video/mp4. Supabase Storage serves these clips as text/plain (the
+    // uploader didn't set a content-type), and TikTok rejects a video whose
+    // Content-Type isn't a video MIME. This route only ever serves mp4 clips, so
+    // overriding is safe and fixes already-uploaded clips without re-uploading.
+    const contentType = 'video/mp4'
     const contentLength = upstream.headers.get('content-length')
     const contentRange = upstream.headers.get('content-range')
     const acceptRanges = upstream.headers.get('accept-ranges')
