@@ -66,7 +66,9 @@ export async function POST(req: NextRequest) {
       // requires a verified domain, so route through our own domain rather than
       // handing TikTok a raw supabase.co URL.
       const publicUrl = `${supabaseUrl}/storage/v1/object/public/clips/${clip.storage_path}`
-      const videoUrl = `${appUrl}/api/image?src=${encodeURIComponent(publicUrl)}`
+      // Dedicated video proxy (Range/HEAD-aware) — see app/api/video/route.ts for why
+      // this can't just reuse /api/image.
+      const videoUrl = `${appUrl}/api/video?src=${encodeURIComponent(publicUrl)}`
 
       const description = clip.caption ?? ''
 

@@ -14,7 +14,9 @@ function withProxyUrl(clip: Record<string, unknown>) {
   const publicUrl = `${supabaseUrl}/storage/v1/object/public/clips/${clip.storage_path}`
   return {
     ...clip,
-    proxy_url: `${appUrl}/api/image?src=${encodeURIComponent(publicUrl)}`,
+    // Dedicated video proxy (Range/HEAD-aware) — kept separate from /api/image so
+    // changes for TikTok's video pull behavior can't affect the image-post flow.
+    proxy_url: `${appUrl}/api/video?src=${encodeURIComponent(publicUrl)}`,
   }
 }
 
