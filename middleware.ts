@@ -6,11 +6,13 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 //    still present so auth() works inside the handler, but we don't want
 //    middleware to gate it in case of timing edge cases
 //  - /api/image — image proxy that TikTok's servers pull from directly
+//  - /api/video — video proxy that TikTok's servers pull from directly (clips)
 const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/auth/tiktok/callback(.*)',
   '/api/image(.*)',
+  '/api/video(.*)',
 ])
 
 export default clerkMiddleware(async (auth, req) => {
