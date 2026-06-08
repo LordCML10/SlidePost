@@ -80,6 +80,55 @@ export async function postPhotoSlideshow({
   return data.data as { publish_id: string }
 }
 
+export async function postVideo({
+  accessToken,
+  videoUrl,
+  description,
+}: {
+  accessToken: string
+  videoUrl: string
+  description: string
+}) {
+  const res = await fetch(TIKTOK_POST_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      post_info: {
+        title: description,
+        privacy_level: 'SELF_ONLY',
+        disable_duet: false,
+        disable_comment: false,
+        disable_stitch: false,
+      },
+      source_info: {
+        source: 'PULL_FROM_URL',
+        video_url: videoUrl,
+      },
+      post_mode: 'MEDIA_UPLOAD',
+      media_type: 'VIDEO',
+    }),
+  })
+
+  const text = await res.text()
+  console.log('[TikTok post video] status:', res.status, 'body:', text)
+
+  let data: Record<string, unknown>
+  try {
+    data = JSON.parse(text)
+  } catch {
+    throw new Error(`TikTok returned non-JSON (${res.status}): ${text.slice(0, 200)}`)
+  }
+
+  if (!res.ok || (data.error as Record<string, unknown>)?.code !== 'ok') {
+    throw new Error(`TikTok error: ${JSON.stringify(data.error ?? data)}`)
+  }
+
+  return data.data as { publish_id: string }
+}
+
 // Check the processing / publish status of a post by its publish_id.
 export async function checkPublishStatus(accessToken: string, publishId: string): Promise<{
   status: string

@@ -8,6 +8,7 @@ import type { TikTokAccount } from '@/lib/types'
 
 const links = [
   { href: '/library', label: 'Library' },
+  { href: '/clips', label: 'Clips' },
   { href: '/drafts', label: 'Drafts' },
   { href: '/captions', label: 'Captions' },
   { href: '/overlay', label: 'Overlay' },

@@ -55,6 +55,30 @@ export type BulkPostResult = {
   error?: string
 }
 
+// A finished clip uploaded by the local ClipR pipeline, ready to post.
+// public_url is computed by the API layer (signed/public Supabase Storage URL), never stored in DB.
+export type Clip = {
+  id: string
+  storage_path: string
+  filename: string
+  status: 'ready' | 'posted' | 'failed'
+  caption: string | null
+  posted: boolean
+  posted_at: string | null
+  publish_id: string | null
+  user_id: string | null
+  created_at: string
+}
+
+export type ClipWithProxy = Clip & { proxy_url: string }
+
+export type ClipPostResult = {
+  clipId: string
+  success: boolean
+  publish_id?: string
+  error?: string
+}
+
 // TikTok account connected to a Clerk user (never exposes the encrypted token)
 export type TikTokAccount = {
   id: string
